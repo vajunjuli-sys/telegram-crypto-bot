@@ -574,3 +574,19 @@ cursor.execute('''
     )
 ''')
 conn.commit()
+from telegram import ReplyKeyboardMarkup, Update
+from telegram.ext import ContextTypes
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # მთავარი მენიუს ღილაკები
+    keyboard = [
+        ["✈️ იაფი ბილეთების ძებნა", "💳 ბილეთის ყიდვა კრიპთოთი"],
+        ["💰 ჩემი კრიპტო-ბალანსი", "📋 ჩემი შეკვეთები"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
+    await update.message.reply_text(
+        "მოგესალმებით! ეს არის კრიპტო-ავიაკასა და საერთაშორისო ფრენების პლატფორმა.\n"
+        "აირჩიეთ სასურველი მოქმედება ქვემოთ მოცემული მენიუდან:",
+        reply_markup=reply_markup
+    )
