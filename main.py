@@ -606,4 +606,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "აირჩიეთ სასურველი მოქმედება ქვემოთ მოცემული მენიუდან:",
         reply_markup=reply_markup
     )
+    application.add_handler(CommandHandler("start", start_command))
+    
     
