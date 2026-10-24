@@ -566,3 +566,11 @@ async def balance_command( update: Update, context: ContextTypes.DEFAULT_TYPE ) 
         )
         return
     awai
+# კრიპტო ბალანსის ცხრილის შექმნა ბაზაში
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS user_balances (
+        user_id INTEGER PRIMARY KEY,
+        balance_crypto REAL DEFAULT 0.0
+    )
+''')
+conn.commit()
