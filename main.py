@@ -607,5 +607,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
     application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("start", start_command))
     
     
