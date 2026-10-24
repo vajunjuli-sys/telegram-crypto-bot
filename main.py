@@ -48,12 +48,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 def main():
-    TOKEN = "8095111974:AAHQM6hI8v-Y4f7k9Y4f7k9Y4f7k9Y4f7k9"
+    # შენი ნამდვილი ტოკენი
+    TOKEN = "8733823493:AAGCALU3J6Ha-a-Jq9cdyYx0phQGGxHkLiQ"
+    
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+
     application = ApplicationBuilder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start_command))
     application.run_polling()
 
 if __name__ == '__main__':
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
     main()
