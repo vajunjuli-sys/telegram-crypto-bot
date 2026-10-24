@@ -9,8 +9,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Bot Token
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8814326130:AAHWgnTQ3R8sKnEFDJb0kfuNc77SDtM8VKg")
+# Bot Token directly embedded to avoid Render environment issues
+TELEGRAM_BOT_TOKEN = "8814326130:AAHWgnTQ3R8sKnEFDJb0kfuNc77SDtM8VKg"
 
 # Keyboards / Menu
 def get_main_keyboard():
