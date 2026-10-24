@@ -1,7 +1,11 @@
 import os
+import sqlite3
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
+# მარტივი სერვერი Render-ისთვის, რომ ბოტი მუშაობდეს 24/7
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -13,277 +17,56 @@ def run_server():
     server = HTTPServer(('0.0.0.0', port), SimpleHandler)
     server.serve_forever()
 
-threading.Thread(target=run_server, daemon=True).start()
-
-import asyncio
-import json
-import logging
-import os
-import sqlite3
-import time
-from datetime import datetime, timezone
-from decimal import Decimal
-from email.utils import parsedate_to_datetime
-from math import ceil
-from pathlib import Path
-from urllib.parse import urlencode, urlsplit
-from urllib.request import Request, urlopen
-from xml.etree import ElementTree
-
-from telegram import ReplyKeyboardMarkup, Update
-from telegram.error import InvalidToken, RetryAfter, TelegramError
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
-
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
-logger = logging.getLogger(__name__)
-
-COINGECKO_PRICE_API = "https://api.coingecko.com/api/v3/simple/price"
-CRYPTO_ASSETS = {
-    "btc": ("bitcoin", "Bitcoin"),
-    "eth": ("ethereum", "Ethereum"),
-    "sol": ("solana", "Solana"),
-    "doge": ("dogecoin", "Dogecoin"),
-}
-ALTCOIN_SYMBOLS = ["eth", "sol", "doge"]
-PRICE_REQUEST_TIMEOUT_SECONDS = 10
-MAX_PRICE_RESPONSE_BYTES = 64 * 1024
-
-NEWS_FEEDS = (
-    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
-    ("Cointelegraph", "https://cointelegraph.com/rss"),
-)
-NEWS_REQUEST_TIMEOUT_SECONDS = 10
-MAX_NEWS_FEED_BYTES = 256 * 1024
-
-DATABASE_PATH = Path(__file__).with_name("bot_data.sqlite3")
-SATOSHIS_PER_BTC = 100_000_000
-MINING_REWARD_SATOSHIS = 1
-MINING_COOLDOWN_SECONDS = 30
-LEADERBOARD_LIMIT = 10
-
-
-async def start( update: Update, context: ContextTypes.DEFAULT_TYPE ) -> None:
-    """Welcome a user when they start the bot."""
-    del context
-    if update.message:
-        await update.message.reply_text(
-            "Welcome! Choose a command from the menu below to check crypto "
-            "prices, mine virtual Bitcoin, view balances, or read the latest "
-            "news.",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=[
-                    ["/crypto", "/mine"],
-                    ["/balance", "/leaderboard"],
-                    ["/news", "/help"],
-                ],
-                resize_keyboard=True,
-                is_persistent=True,
-                input_field_placeholder="Choose a command",
-            ),
-        )
-
-
-async def help_command( update: Update, context: ContextTypes.DEFAULT_TYPE ) -> None:
-    """Show available commands."""
-    del context
-    if update.message:
-        await update.message.reply_text(
-            "Available commands:\n"
-            "/start — start the bot\n"
-            "/help — show this help message\n"
-            "/price — live Bitcoin price in USD\n"
-            "/crypto — live Ethereum, Solana, and Dogecoin prices\n"
-            "/crypto [btc|eth|sol|doge] — price for one coin\n"
-            "/eth, /sol, /doge — coin price shortcuts\n"
-            "/mine — mine 1 virtual satoshi (30-second cooldown)\n"
-            "/balance — check your virtual BTC balance\n"
-            "/leaderboard — see the top 10 virtual miners\n"
-            "/news — get the 3 latest Bitcoin/crypto headlines\n\n"
-            "/stats — admin: count registered users\n"
-            "/broadcast <text> — admin: message all registered users\n\n"
-            "Mining balances are virtual game points, not real Bitcoin."
-        )
-
-def fetch_crypto_prices_usd(symbols: list[str]) -> dict[str, Decimal]:
-    """Fetch and validate CoinGecko prices for the requested symbols."""
-    requested_symbols = list(dict.fromkeys(symbols))
-    if not requested_symbols or any(
-        symbol not in CRYPTO_ASSETS for symbol in requested_symbols
-    ):
-        raise ValueError("Unsupported cryptocurrency symbol")
-
-    coin_ids = [CRYPTO_ASSETS[symbol][0] for symbol in requested_symbols]
-    query = urlencode({"ids": ",".join(coin_ids), "vs_currencies": "usd"})
-    request = Request(
-        f"{COINGECKO_PRICE_API}?{query}",
-        headers={
-            "Accept": "application/json",
-            "User-Agent": "TelegramCryptoBot/1.0",
-        },
+# ბაზის და კრიპტო ბალანსების ცხრილის ინიციალიზაცია
+conn = sqlite3.connect('bot_database.db', check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS user_balances (
+        user_id INTEGER PRIMARY KEY,
+        balance_crypto REAL DEFAULT 0.0
     )
-    with urlopen(request, timeout=PRICE_REQUEST_TIMEOUT_SECONDS) as response:
-        if response.status != 200:
-            raise ValueError(f"CoinGecko returned HTTP {response.status}")
-        response_body = response.read(MAX_PRICE_RESPONSE_BYTES + 1)
+''')
+conn.commit()
 
-    if len(response_body) > MAX_PRICE_RESPONSE_BYTES:
-        raise ValueError("CoinGecko response exceeded the size limit")
-
-    payload = json.loads(response_body)
-    if not isinstance(payload, dict):
-        raise ValueError("CoinGecko returned an invalid response")
-
-    prices: dict[str, Decimal] = {}
-    for symbol in requested_symbols:
-        coin_id = CRYPTO_ASSETS[symbol][0]
-        coin_data = payload.get(coin_id)
-        if not isinstance(coin_data, dict):
-            raise ValueError("CoinGecko did not return a requested coin")
-        raw_price = coin_data.get("usd")
-        if isinstance(raw_price, bool) or not isinstance(
-            raw_price, (int, float, str)
-        ):
-            raise ValueError("CoinGecko returned an invalid price")
-
-        price = Decimal(str(raw_price))
-        if not price.is_finite() or price <= 0:
-            raise ValueError("CoinGecko returned an invalid price")
-        prices[symbol] = price
-
-    return prices
-
-
-async def send_crypto_prices(update: Update, symbols: list[str]) -> None:
-    """Fetch and send live USD prices for one or more supported coins."""
-    if not update.message:
-        return
-
-    try:
-        prices = await asyncio.to_thread(fetch_crypto_prices_usd, symbols)
-    except Exception as error:
-        logger.warning(
-            "Crypto price lookup failed (%s).", type(error).__name__
-        )
-        await update.message.reply_text(
-            "I couldn't fetch crypto prices right now. Please try again shortly."
-        )
-        return
-
-    lines = ["Live crypto prices (USD):"]
-    for symbol in symbols:
-        name = CRYPTO_ASSETS[symbol][1]
-        lines.append(f"{name} ({symbol.upper()}): ${prices[symbol]:,.2f}")
-    checked_at = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
-    lines.append(f"Source: CoinGecko · checked at {checked_at}")
-    await update.message.reply_text("\n".join(lines))
-
-
-async def price_command( update: Update, context: ContextTypes.DEFAULT_TYPE ) -> None:
-    """Reply with the current Bitcoin price in US dollars."""
-    del context
-    await send_crypto_prices(update, ["btc"])
-
-
-async def crypto_command( update: Update, context: ContextTypes.DEFAULT_TYPE ) -> None:
-    """Show all supported altcoin prices or one selected coin."""
-    if not update.message:
-        return
-
-    if not context.args:
-        symbols = ALTCOIN_SYMBOLS
-    elif len(context.args) == 1 and context.args[0].lower() in CRYPTO_ASSETS:
-        symbols = [context.args[0].lower()]
-    else:
-        await update.message.reply_text(
-            "Usage: /crypto [btc|eth|sol|doge]. "
-            "With no symbol, /crypto shows ETH, SOL, and DOGE."
-        )
-        return
-
-    await send_crypto_prices(update, symbols)
-
-
-async def crypto_shortcut_command( update: Update, context: ContextTypes.DEFAULT_TYPE ) -> None:
-    """Handle /eth, /sol, and /doge single-price shortcuts."""
-    del context
-    if not update.message or not update.message.text:
-        return
-
-    command = (
-        update.message.text.split(maxsplit=1)[0]
-        .split("@", maxsplit=1)[0]
-        .lstrip("/")
-        .lower()
+# ახალი /start ბრძანება და კრიპტო-ავიაკასის მენიუ
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    
+    # შევამოწმოთ და დავარეგისტრიროთ მომხმარებელი ბაზაში თუ არ არსებობს
+    cursor.execute('INSERT OR IGNORE INTO user_balances (user_id, balance_crypto) VALUES (?, ?)', (user_id, 0.0))
+    conn.commit()
+    
+    keyboard = [
+        ["✈️ იაფი ბილეთების ძებნა", "💳 ბილეთის ყიდვა კრიპთოთი"],
+        ["💰 ჩემი კრიპტო-ბალანსი", "📋 ჩემი შეკვეთები"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
+    await update.message.reply_text(
+        "მოგესალმებით! ეს არის კრიპტო-ავიაკასა და საერთაშორისო ფრენების პლატფორმა.\n"
+        "აირჩიეთ სასურველი მოქმედება ქვემოთ მოცემული მენიუდან:",
+        reply_markup=reply_markup
     )
-    if command in CRYPTO_ASSETS and command != "btc":
-        await send_crypto_prices(update, [command])
 
+def main():
+    # შენი ბოტის ტოკენი (Render-ის Environment Variables-დან ან პირდაპირ)
+    TOKEN = os.environ.get("BOT_TOKEN", "შენი_ტოკენი_აქ")
+    
+    application = ApplicationBuilder().token(TOKEN).build()
+    
+    # ჰენდლერის რეგისტრაცია
+    application.add_handler(CommandHandler("start", start_command))
+    
+    application.run_polling()
 
-def parse_news_date(date_text: str) -> datetime:
-    """Parse an RSS publication date and normalize it to UTC."""
-    try:
-        published_at = parsedate_to_datetime(date_text)
-    except (TypeError, ValueError):
-        published_at = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
-
-    if published_at.tzinfo is None:
-        published_at = published_at.replace(tzinfo=timezone.utc)
-    return published_at.astimezone(timezone.utc)
-
-
-def fetch_news_feed(source: str, feed_url: str) -> list[dict[str, object]]:
-    """Fetch a public RSS feed and return safe, dated headlines."""
-    request = Request(
-        feed_url,
-        headers={
-            "Accept": "application/rss+xml, application/xml, text/xml",
-            "User-Agent": "TelegramCryptoBot/1.0",
-        },
-    )
-    with urlopen(request, timeout=NEWS_REQUEST_TIMEOUT_SECONDS) as response:
-        if response.status != 200:
-            raise ValueError(f"{source} returned HTTP {response.status}")
-        response_body = response.read(MAX_NEWS_FEED_BYTES + 1)
-
-    if len(response_body) > MAX_NEWS_FEED_BYTES:
-        raise ValueError(f"{source} feed exceeded the size limit")
-
-    root = ElementTree.fromstring(response_body)
-    channel = root.find("channel")
-    if channel is None:
-        raise ValueError(f"{source} returned an unsupported RSS feed")
-
-    headlines: list[dict[str, object]] = []
-    for item in channel.findall("item"):
-        title = " ".join((item.findtext("title") or "").split())
-        link = (item.findtext("link") or "").strip()
-        date_text = (item.findtext("pubDate") or "").strip()
-        if not title or not link or not date_text:
-            continue
-
-        try:
-            published_at = parse_news_date(date_text)
-            parsed_link = urlsplit(link)
-        except (TypeError, ValueError, OverflowError):
-            continue
-
-        if parsed_link.scheme != "https" or not parsed_link.hostname:
-            continue
-
-        headlines.append(
-            {
-                "title": title[:200],
-                "link": link,
+if __name__ == '__main__':
+    # ვუშვებთ ვებ სერვერს ფონურ რეჟიმში
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    
+    # ვუშვებთ ტელეგრამ ბოტს
+    main()
+    "link": link,
                 "source": source,
                 "published_at": published_at,
             }
