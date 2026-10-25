@@ -60,10 +60,11 @@ def get_crypto_prices():
         }
         
         result_lines = ["📊 <b>Live Crypto Prices (USD):</b>\n"]
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         
         for symbol, name in symbols.items():
             url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 price = float(response.json().get('price', 0))
                 result_lines.append(f"{name} ${price:,.2f}")
