@@ -106,7 +106,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         reply = "Please select an option from the menu below."
 
-    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_motion='HTML', parse_mode='HTML')
+    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
 def main():
     server_thread = threading.Thread(target=start_health_server, daemon=True)
