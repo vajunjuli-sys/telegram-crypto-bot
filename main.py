@@ -29,12 +29,17 @@ def load_users():
 
 def save_user(user_id):
     """ინახავს ახალ მომხმარებელს"""
+    if not user_id:
+        return
     users = load_users()
     if str(user_id) not in users:
         users.add(str(user_id))
-        with open(USERS_FILE, "w") as f:
-            for uid in users:
-                f.write(f"{uid}\n")
+        try:
+            with open(USERS_FILE, "w") as f:
+                for uid in users:
+                    f.write(f"{uid}\n")
+        except Exception as e:
+            logger.error(f"Error saving user: {e}")
 
 # მომხმარებლების მაინინგ სესიების მონაცემები
 user_mining = {}
@@ -52,7 +57,7 @@ def get_mining_data(user_id):
         now = time.time()
         diff = now - data["last_time"]
         # ყოველ წამში ემატება მცირე ოდენობით BTC
-        data["mined_btc"] += (diff * 0.00000001)
+        data["mined_btc"] += (diff * 0.00000002)
         data["last_time"] = now
     return data
 
@@ -107,7 +112,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     welcome_text = (
         "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
-        "Choose an option from the menu below or use the buttons:"
+        "Choose an option from the menu below or use the interactive buttons:"
     )
     await update.message.reply_text(
         welcome_text,
@@ -175,15 +180,22 @@ def get_response_text(key, user_id=None):
         return (
             "✈️ <b>Cheap Flights Search</b>\n\n"
             "🔍 Searching for the best flight deals worldwide...\n\n"
-            "👇 <b>გთხოვ მოწერო მიმართულება</b> (მაგალითად: <code>ბერლინი</code>, <code>რომი</code>, <code>თბილისი - ვარშავა</code> ან <code>Berlin to Tokyo</code>) და ეგრევე გიპოვი საუკეთესო ფასებს!"
+            "👇 <b>გთხოვ მოწერო ნებისმიერი მიმართულება ან ქალაქი</b> (მაგალითად: <code>ბერლინი</code>, <code>რომი</code>, <code>ლონდონი</code>, <code>პარიზი</code>, <code>New York</code> ან <code>თბილისი - ვარშავა</code>) და ეგრევე გიპოვი საუკეთესო ფასებს!"
         ), get_main_keyboard()
         
     elif "buy ticket" in clean_key or clean_key == "buy_ticket":
+        kb = [
+            [InlineKeyboardButton("✅ Confirm & Pay 0.0018 BTC", callback_data="pay_btc")],
+            [InlineKeyboardButton("✅ Pay with USDT (TRC20)", callback_data="pay_usdt")],
+            [InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")]
+        ]
         return (
             "💳 <b>Buy Tickets with Crypto</b>\n\n"
-            "შეგიძლია შეიძინო ავიაბილეთები პირდაპირ BTC, ETH ან USDT-ით უსაფრთხოდ.\n"
-            "აირჩიე მიმართულება ან მოგვწერე რეისის დეტალები."
-        ), get_main_keyboard()
+            "აირჩიე გადახდის მეთოდი ბილეთის შესაძენად:\n"
+            "• მიმართულება: <b>Selected Flight Deal</b>\n"
+            "• სავარაუდო ფასი: <b>$120 / 0.0018 BTC</b>\n\n"
+            "<i>დააჭირე ქვემოთ მოცემულ ღილაკს გადახდის დასასრულებლად:</i>"
+        ), InlineKeyboardMarkup(kb)
         
     elif "mining" in clean_key:
         if user_id:
@@ -216,31 +228,36 @@ def get_response_text(key, user_id=None):
             "💵 USD: $0.00\n"
             "🪙 BTC: 0.00000000\n"
             "🔷 ETH: 0.00000000\n"
-            "💎 USDT: $0.00"
+            "💎 USDT: $0.00\n\n"
+            "💳 <i>დააკავშირე კრიპტო საფულე ბალანსის შესავსებად.</i>"
         ), get_main_keyboard()
         
     elif "order" in clean_key:
         return (
             "📋 <b>Your Orders:</b>\n\n"
-            "You have no active orders at the moment."
+            "You have no active orders at the moment. Search for flights or crypto items to place an order."
         ), get_main_keyboard()
     
-    # თუ მომხმარებელმა ჩაწერა კონკრეტული მიმართულება/ქალაქი (მაგ: ბერლინი, რომი, პარიზი...)
-    if len(key.strip()) > 2 and not key.startswith("/"):
+    # თუ მომხმარებელმა ჩაწერა კონკრეტული მიმართულება/ქალაქი (მაგ: ბერლინი, რომი, პარიზი, ტოკიო...)
+    if len(key.strip()) > 1 and not key.startswith("/"):
         route_name = key.strip().title()
+        kb = [
+            [InlineKeyboardButton("💳 Buy Selected Ticket with Crypto", callback_data="buy_ticket")],
+            [InlineKeyboardButton("✈️ Search Another Flight", callback_data="flights")]
+        ]
         return (
            f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{route_name}</code>\n\n"
-           "✅ <b>ნაპოვნია საუკეთესო ვარიანტები:</b>\n\n"
-           f"1️⃣ <b>Direct / Connecting Flight ➔ {route_name}</b>\n"
-           "• ავიაკომპანია: Wizz Air / Lufthansa / Turkish Airlines\n"
+           "✅ <b>ნაპოვნია საუკეთესო ვარიანტები მსოფლიო რეისებიდან:</b>\n\n"
+           f"1️⃣ <b>Direct Flight ➔ {route_name}</b>\n"
+           "• ავიაკომპანია: Turkish Airlines / Lufthansa\n"
            "• თარიღი: უახლოესი რეისი (შესაბამისი სეზონი)\n"
-           "• ფასი: <b>$135 (ან 0.0020 BTC)</b>\n"
+           "• ფასი: <b>$145 (ან 0.0022 BTC)</b>\n"
            "• სტატუსი: 🟢 ხელმისაწვდომია\n\n"
            f"2️⃣ <b>Budget Option ➔ {route_name} (Via Hub)</b>\n"
-           "• ავიაკომპანია: Pegasus / RyanAir\n"
-           "• ფასი: <b>$98 (ან 0.0015 BTC)</b>\n\n"
+           "• ავიაკომპანია: Wizz Air / Pegasus / RyanAir\n"
+           "• ფასი: <b>$89 (ან 0.0013 BTC)</b>\n\n"
            "💳 <i>ბილეთის შესაძენად დააჭირე ქვემოთ მოცემულ ღილაკს:</i>"
-        ), InlineKeyboardMarkup([[InlineKeyboardButton("💳 Buy Selected Ticket with Crypto", callback_data="buy_ticket")]])
+        ), InlineKeyboardMarkup(kb)
 
     return "Please select an option from the menu below.", get_main_keyboard()
 
@@ -276,6 +293,27 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
         except Exception:
             await query.message.reply_text(text, reply_markup=markup, parse_mode='HTML')
+        return
+    elif data == "pay_btc":
+        await query.message.reply_text(
+            "🪙 <b>Bitcoin Payment Checkout</b>\n\n"
+            "გადარიცხეთ ზუსტად <code>0.0018 BTC</code> მისამართზე:\n"
+            "<code>bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</code>\n\n"
+            "⏳ <i>გადახდის სტატუსი: მოლოდინში (დასტურდება ბლოკჩეინში).</i>",
+            parse_mode='HTML'
+        )
+        return
+    elif data == "pay_usdt":
+        await query.message.reply_text(
+            "💎 <b>USDT (TRC20) Payment Checkout</b>\n\n"
+            "გადარიცხეთ ზუსტად <code>120.00 USDT</code> მისამართზე:\n"
+            "<code>TJ7T8kxR7Vv4N9s2K4z8L1m9P2q3R5s6T7</code>\n\n"
+            "⏳ <i>გადახდის სტატუსი: მოლოდინში.</i>",
+            parse_mode='HTML'
+        )
+        return
+    elif data == "cancel_order":
+        await query.message.reply_text("❌ შეკვეთა გაუქმებულია.", parse_mode='HTML')
         return
 
     res_text, markup = get_response_text(data, user_id)
