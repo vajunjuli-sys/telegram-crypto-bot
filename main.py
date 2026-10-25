@@ -49,31 +49,29 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
-# 4. კრიპტო ფასების მიღება Binance API-დან (სწრაფი და საიმედო)
+# 4. კრიპტო ფასების მიღება CryptoCompare API-დან (არასდროს იბლოკება Render-იდან)
 def get_crypto_prices():
     try:
-        symbols = {
-            "BTCUSDT": "🪙 <b>Bitcoin (BTC):</b>",
-            "ETHUSDT": "🔷 <b>Ethereum (ETH):</b>",
-            "BNBUSDT": "🟡 <b>Binance Coin (BNB):</b>",
-            "SOLUSDT": "🟣 <b>Solana (SOL):</b>"
-        }
+        url = "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,BNB,SOL&tsyms=USD"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=10)
         
-        result_lines = ["📊 <b>Live Crypto Prices (USD):</b>\n"]
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        
-        for symbol, name in symbols.items():
-            url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                price = float(response.json().get('price', 0))
-                result_lines.append(f"{name} ${price:,.2f}")
-            else:
-                result_lines.append(f"{name} N/A")
-                
-        result_lines.append("\n🔄 <i>Updated live from Binance</i>")
-        return "\n".join(result_lines)
+        if response.status_code == 200:
+            data = response.json()
+            btc = data.get("BTC", {}).get("USD", 0)
+            eth = data.get("ETH", {}).get("USD", 0)
+            bnb = data.get("BNB", {}).get("USD", 0)
+            sol = data.get("SOL", {}).get("USD", 0)
 
+            result_lines = [
+                "📊 <b>Live Crypto Prices (USD):</b>\n",
+                f"🪙 <b>Bitcoin (BTC):</b> ${btc:,.2f}",
+                f"🔷 <b>Ethereum (ETH):</b> ${eth:,.2f}",
+                f"🟡 <b>Binance Coin (BNB):</b> ${bnb:,.2f}",
+                f"🟣 <b>Solana (SOL):</b> ${sol:,.2f}",
+                "\n🔄 <i>Updated live from CryptoCompare</i>"
+            ]
+            return "\n".join(result_lines)
     except Exception as e:
         logger.error(f"Error fetching prices: {e}")
     
