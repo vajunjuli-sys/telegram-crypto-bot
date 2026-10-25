@@ -19,7 +19,6 @@ ADMIN_ID = 1090757467
 
 # მონაცემთა ფაილები
 USERS_FILE = "users.txt"
-MINING_FILE = "mining_data.txt"
 
 def load_users():
     """ტვირთავს უნიკალურ მომხმარებლებს ფაილიდან"""
@@ -176,14 +175,16 @@ def get_response_text(key, user_id=None):
         return (
             "✈️ <b>Cheap Flights Search</b>\n\n"
             "🔍 Searching for the best flight deals worldwide...\n\n"
-            "👇 <b>გთხოვ მოწერო მიმართულება</b> (მაგალითად: <code>თბილისი - ლონდონი</code> ან <code>Tbilisi to Paris</code>) და ეგრევე გიპოვი საუკეთესო ფასებს!"
-        )
+            "👇 <b>გთხოვ მოწერო მიმართულება</b> (მაგალითად: <code>ბერლინი</code>, <code>რომი</code>, <code>თბილისი - ვარშავა</code> ან <code>Berlin to Tokyo</code>) და ეგრევე გიპოვი საუკეთესო ფასებს!"
+        ), get_main_keyboard()
+        
     elif "buy ticket" in clean_key or clean_key == "buy_ticket":
         return (
             "💳 <b>Buy Tickets with Crypto</b>\n\n"
             "შეგიძლია შეიძინო ავიაბილეთები პირდაპირ BTC, ETH ან USDT-ით უსაფრთხოდ.\n"
             "აირჩიე მიმართულება ან მოგვწერე რეისის დეტალები."
-        )
+        ), get_main_keyboard()
+        
     elif "mining" in clean_key:
         if user_id:
             m_data = get_mining_data(user_id)
@@ -204,9 +205,11 @@ def get_response_text(key, user_id=None):
                 "<i>მართე შენი მაინინგი ღილაკებით ქვემოთ:</i>"
             )
             return text, InlineKeyboardMarkup(kb)
-        return "⛏️ <b>Crypto Mining Dashboard</b>\n• Status: 🟢 Online\n• Hashrate: 45.2 MH/s", None
+        return "⛏️ <b>Crypto Mining Dashboard</b>\n• Status: 🟢 Online\n• Hashrate: 45.2 MH/s", get_main_keyboard()
+        
     elif "price" in clean_key or clean_key == "prices":
-        return get_crypto_prices(), None
+        return get_crypto_prices(), get_main_keyboard()
+        
     elif "balance" in clean_key:
         return (
             "💰 <b>Your Account Balance:</b>\n\n"
@@ -214,30 +217,32 @@ def get_response_text(key, user_id=None):
             "🪙 BTC: 0.00000000\n"
             "🔷 ETH: 0.00000000\n"
             "💎 USDT: $0.00"
-        ), None
+        ), get_main_keyboard()
+        
     elif "order" in clean_key:
         return (
             "📋 <b>Your Orders:</b>\n\n"
             "You have no active orders at the moment."
-        ), None
+        ), get_main_keyboard()
     
-    # თუ მომხმარებელმა ჩაწერა კონკრეტული მიმართულება (მაგ: თბილისი - რომი)
-    if len(key.strip()) > 3 and not key.startswith("/"):
+    # თუ მომხმარებელმა ჩაწერა კონკრეტული მიმართულება/ქალაქი (მაგ: ბერლინი, რომი, პარიზი...)
+    if len(key.strip()) > 2 and not key.startswith("/"):
+        route_name = key.strip().title()
         return (
-           f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{key}</code>\n\n"
+           f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{route_name}</code>\n\n"
            "✅ <b>ნაპოვნია საუკეთესო ვარიანტები:</b>\n\n"
-           "1️⃣ <b>Tbilisi (TBS) ➔ London (LHR)</b>\n"
-           "• ავიაკომპანია: Wizz Air / British Airways\n"
-           "• თარიღი: უახლოესი რეისი\n"
-           "• ფასი: <b>$145 (ან 0.0022 BTC)</b>\n"
+           f"1️⃣ <b>Direct / Connecting Flight ➔ {route_name}</b>\n"
+           "• ავიაკომპანია: Wizz Air / Lufthansa / Turkish Airlines\n"
+           "• თარიღი: უახლოესი რეისი (შესაბამისი სეზონი)\n"
+           "• ფასი: <b>$135 (ან 0.0020 BTC)</b>\n"
            "• სტატუსი: 🟢 ხელმისაწვდომია\n\n"
-           "2️⃣ <b>Tbilisi (TBS) ➔ Paris (CDG)</b>\n"
-           "• ავიაკომპანია: Air France\n"
-           "• ფასი: <b>$210 (ან 0.0032 BTC)</b>\n\n"
+           f"2️⃣ <b>Budget Option ➔ {route_name} (Via Hub)</b>\n"
+           "• ავიაკომპანია: Pegasus / RyanAir\n"
+           "• ფასი: <b>$98 (ან 0.0015 BTC)</b>\n\n"
            "💳 <i>ბილეთის შესაძენად დააჭირე ქვემოთ მოცემულ ღილაკს:</i>"
         ), InlineKeyboardMarkup([[InlineKeyboardButton("💳 Buy Selected Ticket with Crypto", callback_data="buy_ticket")]])
 
-    return "Please select an option from the menu below.", None
+    return "Please select an option from the menu below.", get_main_keyboard()
 
 # 8. ინლაინ ღილაკების დამუშავება
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -252,25 +257,29 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         user_mining[user_id]["active"] = True
         user_mining[user_id]["last_time"] = time.time()
         text, markup = get_response_text("mining", user_id)
-        await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        try:
+            await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        except Exception:
+            await query.message.reply_text(text, reply_markup=markup, parse_mode='HTML')
         return
     elif data == "stop_mine":
         user_mining[user_id]["active"] = False
         text, markup = get_response_text("mining", user_id)
-        await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        try:
+            await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        except Exception:
+            await query.message.reply_text(text, reply_markup=markup, parse_mode='HTML')
         return
     elif data == "refresh_mine":
         text, markup = get_response_text("mining", user_id)
-        await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        try:
+            await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        except Exception:
+            await query.message.reply_text(text, reply_markup=markup, parse_mode='HTML')
         return
 
-    res = get_response_text(data, user_id)
-    if isinstance(res, tuple):
-        reply_text, markup = res
-    else:
-        reply_text, markup = res, get_main_keyboard()
-
-    await query.message.reply_text(reply_text, reply_markup=markup, parse_mode='HTML')
+    res_text, markup = get_response_text(data, user_id)
+    await query.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
 
 # 9. ტექსტური შეტყობინებების დამუშავება
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -278,14 +287,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_user(user_id)
     
     text = update.message.text
-    res = get_response_text(text, user_id)
-    
-    if isinstance(res, tuple):
-        reply_text, markup = res
-    else:
-        reply_text, markup = res, get_main_keyboard()
+    res_text, markup = get_response_text(text, user_id)
         
-    await update.message.reply_text(reply_text, reply_markup=markup, parse_mode='HTML')
+    await update.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
 
 # 10. მთავარი ფუნქცია
 def main():
