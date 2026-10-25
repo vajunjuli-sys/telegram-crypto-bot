@@ -4,13 +4,14 @@ import requests
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
+# ჩასვი შენი მოქმედი ტოკენი BotFather-იდან
 TELEGRAM_BOT_TOKEN = "8883435722:AAGoH5dZZ1qk88-BKxxm_JCLIMjtvNj_yBI"
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
