@@ -49,29 +49,30 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
-# 4. კრიპტო ფასების მიღება CoinGecko API-დან (განახლებული Header-ებით)
+# 4. კრიპტო ფასების მიღება Binance API-დან (სწრაფი და საიმედო)
 def get_crypto_prices():
     try:
-        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,solana&vs_currencies=usd"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+        symbols = {
+            "BTCUSDT": "🪙 <b>Bitcoin (BTC):</b>",
+            "ETHUSDT": "🔷 <b>Ethereum (ETH):</b>",
+            "BNBUSDT": "🟡 <b>Binance Coin (BNB):</b>",
+            "SOLUSDT": "🟣 <b>Solana (SOL):</b>"
         }
-        response = requests.get(url, headers=headers, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            btc = data.get('bitcoin', {}).get('usd', 'N/A')
-            eth = data.get('ethereum', {}).get('usd', 'N/A')
-            bnb = data.get('binancecoin', {}).get('usd', 'N/A')
-            sol = data.get('solana', {}).get('usd', 'N/A')
-            
-            return (
-                f"📊 <b>Live Crypto Prices (USD):</b>\n\n"
-                f"🪙 <b>Bitcoin (BTC):</b> ${btc:,}\n"
-                f"🔷 <b>Ethereum (ETH):</b> ${eth:,}\n"
-                f"🟡 <b>Binance Coin (BNB):</b> ${bnb:,}\n"
-                f"🟣 <b>Solana (SOL):</b> ${sol:,}\n\n"
-                f"🔄 <i>Updated just now</i>"
-            )
+        
+        result_lines = ["📊 <b>Live Crypto Prices (USD):</b>\n"]
+        
+        for symbol, name in symbols.items():
+            url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                price = float(response.json().get('price', 0))
+                result_lines.append(f"{name} ${price:,.2f}")
+            else:
+                result_lines.append(f"{name} N/A")
+                
+        result_lines.append("\n🔄 <i>Updated live from Binance</i>")
+        return "\n".join(result_lines)
+
     except Exception as e:
         logger.error(f"Error fetching prices: {e}")
     
