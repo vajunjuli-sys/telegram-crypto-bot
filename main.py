@@ -10,8 +10,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ტოკენი პირდაპირ კოდში
-TELEGRAM_BOT_TOKEN = "8814326130:AAH4etd9dQYrpWbUMaTMZ2wBRNK8-tRuFeY"
+# ახალი ტოკენი
+TELEGRAM_BOT_TOKEN = "8949326406:AAE-dz8YFEwDgcYQJ8adjjk0ELC3oi0l2Yg"
 
 # კლავიატურის ღილაკები
 def get_main_keyboard():
