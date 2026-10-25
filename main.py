@@ -271,8 +271,6 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ინლაინ ღილაკების დამუშავება
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    
     user_id = update.effective_user.id
     save_user(user_id)
     
@@ -281,29 +279,34 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         user_mining[user_id] = get_mining_data(user_id)
         user_mining[user_id]["active"] = True
         user_mining[user_id]["last_time"] = time.time()
+        await query.answer("🟢 მაინინგი წარმატებით ჩაირთო!", show_alert=True)
         text, markup = get_response_text("mining", user_id)
         try:
             await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
         except Exception:
-            await query.message.reply_text(text, reply_markup=markup, parse_mode='HTML')
+            pass
         return
     elif data == "stop_mine":
         user_mining[user_id] = get_mining_data(user_id)
         user_mining[user_id]["active"] = False
+        await query.answer("🔴 მაინინგი შეჩერებულია!", show_alert=True)
         text, markup = get_response_text("mining", user_id)
         try:
             await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
         except Exception:
-            await query.message.reply_text(text, reply_markup=markup, parse_mode='HTML')
+            pass
         return
     elif data == "refresh_mine":
+        user_mining[user_id] = get_mining_data(user_id)
+        await query.answer("🔄 მონაცემები განახლდა!", show_alert=False)
         text, markup = get_response_text("mining", user_id)
         try:
             await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
         except Exception:
-            await query.message.reply_text(text, reply_markup=markup, parse_mode='HTML')
+            pass
         return
     elif data == "pay_btc":
+        await query.answer()
         await query.message.reply_text(
             "🪙 <b>Bitcoin Payment Checkout</b>\n\n"
             "გადარიცხეთ ზუსტად <code>0.0018 BTC</code> მისამართზე:\n"
@@ -313,6 +316,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
     elif data == "pay_usdt":
+        await query.answer()
         await query.message.reply_text(
             "💎 <b>USDT (TRC20) Payment Checkout</b>\n\n"
             "გადარიცხეთ ზუსტად <code>120.00 USDT</code> მისამართზე:\n"
@@ -322,9 +326,11 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
     elif data == "cancel_order":
+        await query.answer("❌ გაუქმებულია")
         await query.message.reply_text("❌ შეკვეთა გაუქმებულია.", parse_mode='HTML')
         return
 
+    await query.answer()
     res_text, markup = get_response_text(data, user_id)
     await query.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
 
