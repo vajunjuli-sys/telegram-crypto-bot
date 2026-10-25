@@ -12,8 +12,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# შენი მოქმედი ტოკენი
+# შენი მოქმედი ტოკენი და ადმინისტრატორის Telegram ID
 TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3HOn9TY4rmuunBN3Fzms1gc"
+ADMIN_ID = 1090757467  # შენი ტელეგრამის ID
+
+# მომხმარებლების ID-ების შესანახი ფაილი
+USERS_FILE = "users.txt"
+
+def load_users():
+    """ტვირთავს უნიკალურ მომხმარებლებს ფაილიდან"""
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "r") as f:
+            return set(line.strip() for line in f if line.strip())
+    return set()
+
+def save_user(user_id):
+    """ინახავს ახალ მომხმარებელს"""
+    users = load_users()
+    if str(user_id) not in users:
+        users.add(str(user_id))
+        with open(USERS_FILE, "a") as f:
+            f.write(f"{user_id}\n")
 
 # 1. HTTP სერვერი Render-ის Health Check-ისთვის
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -43,13 +62,29 @@ def get_main_keyboard():
 
 # 3. /start ბრძანების დამუშავება
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    save_user(user_id)
+    
     welcome_text = (
         "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
         "Choose an option from the menu below to get started:"
     )
     await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
-# 4. კრიპტო ფასების მიღება (Multi-Source Fallback გარანტირებული მუშაობისთვის)
+# 4. /stats ბრძანება - მომხმარებლების რაოდენობის სანახავად (მხოლოდ ადმინისთვის)
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    users = load_users()
+    count = len(users)
+    
+    msg = (
+        f"📊 <b>MoneyMind Bot — სტატისტიკა:</b>\n\n"
+        f"👥 სულ მომხმარებელი: <b>{count}</b>\n"
+        f"🆔 შენი ID: <code>{user_id}</code>"
+    )
+    await update.message.reply_text(msg, parse_mode='HTML')
+
+# 5. კრიპტო ფასების მიღება (Multi-Source Fallback გარანტირებული მუშაობისთვის)
 def get_crypto_prices():
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -98,7 +133,7 @@ def get_crypto_prices():
     except Exception as e:
         logger.error(f"CoinGecko fetch failed: {e}")
 
-    # Fallback to Reliable Market Estimates if network blocks external calls
+    # Fallback to Reliable Market Estimates
     return (
         "📊 <b>Live Crypto Prices (USD):</b>\n\n"
         "🪙 <b>Bitcoin (BTC):</b> $67,450.00\n"
@@ -108,8 +143,10 @@ def get_crypto_prices():
         "🔄 <i>Updated live from Market Data</i>"
     )
 
-# 5. ღილაკების და ტექსტური შეტყობინებების დამუშავება
+# 6. ღილაკების და ტექსტური შეტყობინებების დამუშავება
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    save_user(user_id)
     text = update.message.text
 
     if "Search Cheap Flights" in text:
@@ -150,7 +187,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
-# 6. მთავარი ფუნქცია
+# 7. მთავარი ფუნქცია
 def main():
     server_thread = threading.Thread(target=start_health_server, daemon=True)
     server_thread.start()
@@ -158,6 +195,7 @@ def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("🚀 MoneyMind Bot is running successfully!")
