@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# შენი ახალი მოქმედი ტოკენი BotFather-იდან
+# შენი მოქმედი ტოკენი
 TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3HOn9TY4rmuunBN3Fzms1gc"
 
 # 1. HTTP სერვერი Render-ის Health Check-ისთვის
@@ -24,7 +24,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.wfile.write('MoneyMind Bot Status: OK'.encode('utf-8'))
 
     def log_message(self, format, *args):
-        return  # ლოგების გაწმენდა
+        return
 
 def start_health_server():
     port = int(os.environ.get('PORT', 10000))
@@ -49,11 +49,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
-# 4. კრიპტო ფასების მიღება CoinGecko API-დან
+# 4. კრიპტო ფასების მიღება CoinGecko API-დან (განახლებული Header-ებით)
 def get_crypto_prices():
     try:
         url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,solana&vs_currencies=usd"
-        response = requests.get(url, timeout=5)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
             data = response.json()
             btc = data.get('bitcoin', {}).get('usd', 'N/A')
@@ -118,11 +121,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # 6. მთავარი ფუნქცია
 def main():
-    # HTTP სერვერის გაშვება ფონურ ნაკადში (Render-ისთვის)
     server_thread = threading.Thread(target=start_health_server, daemon=True)
     server_thread.start()
 
-    # ტელეგრამ ბოტის აპლიკაცია
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start_command))
