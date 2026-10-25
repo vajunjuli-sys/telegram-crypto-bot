@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 import threading
+import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
@@ -14,10 +15,11 @@ logger = logging.getLogger(__name__)
 
 # შენი მოქმედი ტოკენი და ადმინისტრატორის Telegram ID
 TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3HOn9TY4rmuunBN3Fzms1gc"
-ADMIN_ID = 1090757467  # შენი ტელეგრამის ID
+ADMIN_ID = 1090757467
 
-# მომხმარებლების ID-ების შესანახი ფაილი
+# მონაცემთა ფაილები
 USERS_FILE = "users.txt"
+MINING_FILE = "mining_data.txt"
 
 def load_users():
     """ტვირთავს უნიკალურ მომხმარებლებს ფაილიდან"""
@@ -31,8 +33,29 @@ def save_user(user_id):
     users = load_users()
     if str(user_id) not in users:
         users.add(str(user_id))
-        with open(USERS_FILE, "a") as f:
-            f.write(f"{user_id}\n")
+        with open(USERS_FILE, "w") as f:
+            for uid in users:
+                f.write(f"{uid}\n")
+
+# მომხმარებლების მაინინგ სესიების მონაცემები
+user_mining = {}
+
+def get_mining_data(user_id):
+    if user_id not in user_mining:
+        user_mining[user_id] = {
+            "active": False,
+            "mined_btc": 0.00001250,
+            "hashrate": 48.5,
+            "last_time": time.time()
+        }
+    data = user_mining[user_id]
+    if data["active"]:
+        now = time.time()
+        diff = now - data["last_time"]
+        # ყოველ წამში ემატება მცირე ოდენობით BTC
+        data["mined_btc"] += (diff * 0.00000001)
+        data["last_time"] = now
+    return data
 
 # 1. HTTP სერვერი Render-ის Health Check-ისთვის
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -60,7 +83,7 @@ def get_main_keyboard():
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
-# 3. ინლაინ კლავიატურა (Inline Keyboard - შეტყობინების შიგნით)
+# 3. ინლაინ კლავიატურა (Inline Keyboard)
 def get_inline_keyboard():
     keyboard = [
         [
@@ -68,7 +91,7 @@ def get_inline_keyboard():
             InlineKeyboardButton("💳 Buy Ticket", callback_data="buy_ticket")
         ],
         [
-            InlineKeyboardButton("⛏️ Mining", callback_data="mining"),
+            InlineKeyboardButton("⛏️ Mining Dashboard", callback_data="mining"),
             InlineKeyboardButton("📊 Live Prices", callback_data="prices")
         ],
         [
@@ -85,9 +108,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     welcome_text = (
         "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
-        "Choose an option from the menu or press the interactive buttons below:"
+        "Choose an option from the menu below or use the buttons:"
     )
-    # ვაგზავნით როგორც ReplyKeyboard-ს (ქვედა მენიუ), ასევე InlineKeyboard-ს (შეტყობინების ღილაკები)
     await update.message.reply_text(
         welcome_text,
         reply_markup=get_main_keyboard(),
@@ -99,7 +121,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-# 5. /stats ბრძანება - მომხმარებლების რაოდენობის სანახავად
+# 5. /stats ბრძანება
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
@@ -115,10 +137,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # 6. კრიპტო ფასების მიღება
 def get_crypto_prices():
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-
+    headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         url = "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,BNB,SOL&tsyms=USD"
         response = requests.get(url, headers=headers, timeout=5)
@@ -149,46 +168,78 @@ def get_crypto_prices():
         "🔄 <i>Updated live from Market Data</i>"
     )
 
-def get_response_text(key):
-    # გასწორდა ტექსტების შედარება, რომ ღილაკის ტექსტი ზუსტად დაემთხვეს
-    clean_key = key.strip()
+# 7. მთავარი პასუხების გენერატორი
+def get_response_text(key, user_id=None):
+    clean_key = key.strip().lower()
     
-    if "Search Cheap Flights" in clean_key or clean_key == "flights":
+    if "flight" in clean_key or clean_key == "flights":
         return (
             "✈️ <b>Cheap Flights Search</b>\n\n"
-            "Searching for the best flight deals worldwide...\n"
-            "Please send your departure city and destination (e.g., <code>Tbilisi to London</code>)."
+            "🔍 Searching for the best flight deals worldwide...\n\n"
+            "👇 <b>გთხოვ მოწერო მიმართულება</b> (მაგალითად: <code>თბილისი - ლონდონი</code> ან <code>Tbilisi to Paris</code>) და ეგრევე გიპოვი საუკეთესო ფასებს!"
         )
-    elif "Buy Ticket with Crypto" in clean_key or clean_key == "buy_ticket":
+    elif "buy ticket" in clean_key or clean_key == "buy_ticket":
         return (
             "💳 <b>Buy Tickets with Crypto</b>\n\n"
-            "You can purchase airline tickets using BTC, ETH, or USDT.\n"
-            "Contact support or select a route to proceed with payment."
+            "შეგიძლია შეიძინო ავიაბილეთები პირდაპირ BTC, ETH ან USDT-ით უსაფრთხოდ.\n"
+            "აირჩიე მიმართულება ან მოგვწერე რეისის დეტალები."
         )
-    elif "Crypto Mining" in clean_key or clean_key == "mining":
-        return (
-            "⛏️ <b>Crypto Mining Dashboard</b>\n\n"
-            "• Active Hashes: 45.2 MH/s\n"
-            "• Estimated Daily Earnings: 0.00045 BTC\n"
-            "• Status: 🟢 Online"
-        )
-    elif "Crypto Prices" in clean_key or clean_key == "prices":
-        return get_crypto_prices()
-    elif "My Balance" in clean_key or clean_key == "balance":
+    elif "mining" in clean_key:
+        if user_id:
+            m_data = get_mining_data(user_id)
+            status_emoji = "🟢 Active (Mining...)" if m_data["active"] else "🔴 Paused"
+            kb = [
+                [
+                    InlineKeyboardButton("🟢 Start Mining", callback_data="start_mine"),
+                    InlineKeyboardButton("⏹️ Stop Mining", callback_data="stop_mine")
+                ],
+                [InlineKeyboardButton("🔄 Refresh Stats", callback_data="refresh_mine")]
+            ]
+            text = (
+                "⛏️ <b>Crypto Mining Dashboard</b>\n\n"
+                f"• Status: {status_emoji}\n"
+                f"• Active Hashrate: <b>{m_data['hashrate']} MH/s</b>\n"
+                f"• Mined Balance: <b>{m_data['mined_btc']:.8f} BTC</b>\n"
+                f"• Estimated Daily: ~0.00045 BTC\n\n"
+                "<i>მართე შენი მაინინგი ღილაკებით ქვემოთ:</i>"
+            )
+            return text, InlineKeyboardMarkup(kb)
+        return "⛏️ <b>Crypto Mining Dashboard</b>\n• Status: 🟢 Online\n• Hashrate: 45.2 MH/s", None
+    elif "price" in clean_key or clean_key == "prices":
+        return get_crypto_prices(), None
+    elif "balance" in clean_key:
         return (
             "💰 <b>Your Account Balance:</b>\n\n"
             "💵 USD: $0.00\n"
             "🪙 BTC: 0.00000000\n"
-            "🔷 ETH: 0.00000000"
-        )
-    elif "My Orders" in clean_key or clean_key == "orders":
+            "🔷 ETH: 0.00000000\n"
+            "💎 USDT: $0.00"
+        ), None
+    elif "order" in clean_key:
         return (
             "📋 <b>Your Orders:</b>\n\n"
             "You have no active orders at the moment."
-        )
-    return "Please select an option from the menu below."
+        ), None
+    
+    # თუ მომხმარებელმა ჩაწერა კონკრეტული მიმართულება (მაგ: თბილისი - რომი)
+    if len(key.strip()) > 3 and not key.startswith("/"):
+        return (
+           f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{key}</code>\n\n"
+           "✅ <b>ნაპოვნია საუკეთესო ვარიანტები:</b>\n\n"
+           "1️⃣ <b>Tbilisi (TBS) ➔ London (LHR)</b>\n"
+           "• ავიაკომპანია: Wizz Air / British Airways\n"
+           "• თარიღი: უახლოესი რეისი\n"
+           "• ფასი: <b>$145 (ან 0.0022 BTC)</b>\n"
+           "• სტატუსი: 🟢 ხელმისაწვდომია\n\n"
+           "2️⃣ <b>Tbilisi (TBS) ➔ Paris (CDG)</b>\n"
+           "• ავიაკომპანია: Air France\n"
+           "• ფასი: <b>$210 (ან 0.0032 BTC)</b>\n\n"
+           "💳 <i>ბილეთის შესაძენად დააჭირე ქვემოთ მოცემულ ღილაკს:</i>"
+        ), InlineKeyboardMarkup([[InlineKeyboardButton("💳 Buy Selected Ticket with Crypto", callback_data="buy_ticket")]])
 
-# 7. ინლაინ ღილაკების დაჭერის დამუშავება
+    return "Please select an option from the menu below.", None
+
+# 8. ინლაინ ღილაკების დამუშავება
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -196,20 +247,47 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     user_id = update.effective_user.id
     save_user(user_id)
     
-    reply_text = get_response_text(query.data)
-    await query.message.reply_text(reply_text, reply_markup=get_main_keyboard(), parse_mode='HTML')
+    data = query.data
+    if data == "start_mine":
+        user_mining[user_id]["active"] = True
+        user_mining[user_id]["last_time"] = time.time()
+        text, markup = get_response_text("mining", user_id)
+        await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        return
+    elif data == "stop_mine":
+        user_mining[user_id]["active"] = False
+        text, markup = get_response_text("mining", user_id)
+        await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        return
+    elif data == "refresh_mine":
+        text, markup = get_response_text("mining", user_id)
+        await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        return
 
-# 8. ტექსტური შეტყობინებების დამუშავება
+    res = get_response_text(data, user_id)
+    if isinstance(res, tuple):
+        reply_text, markup = res
+    else:
+        reply_text, markup = res, get_main_keyboard()
+
+    await query.message.reply_text(reply_text, reply_markup=markup, parse_mode='HTML')
+
+# 9. ტექსტური შეტყობინებების დამუშავება
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
     
     text = update.message.text
-    reply = get_response_text(text)
+    res = get_response_text(text, user_id)
     
-    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
+    if isinstance(res, tuple):
+        reply_text, markup = res
+    else:
+        reply_text, markup = res, get_main_keyboard()
+        
+    await update.message.reply_text(reply_text, reply_markup=markup, parse_mode='HTML')
 
-# 9. მთავარი ფუნქცია
+# 10. მთავარი ფუნქცია
 def main():
     server_thread = threading.Thread(target=start_health_server, daemon=True)
     server_thread.start()
