@@ -11,7 +11,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = "8949326406:AAE-dz8YFEwDgcYQJ8adjjk0ELC3oi0l2Yg"
+# ახალი სუფთა ბოტის ტოკენი
+TELEGRAM_BOT_TOKEN = "8883435722:AAGoH5dZZ1qk88-BKxxm_JCLIMjtvNj_yBI"
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -45,7 +46,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_crypto_prices():
     try:
-        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,solana,cardano&vs_currencies=usd"
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,solana&vs_currencies=usd"
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             data = response.json()
@@ -82,43 +83,5 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "You can purchase airline tickets using BTC, ETH, or USDT.\n"
             "Contact support or select a route to proceed with payment."
         )
-    elif "Crypto Mining" in text:
-        reply = (
-            "⛏️ <b>Crypto Mining Dashboard</b>\n\n"
-            "• Active Hashes: 45.2 MH/s\n"
-            "• Estimated Daily Earnings: 0.00045 BTC\n"
-            "• Status: 🟢 Online"
-        )
-    elif "Crypto Prices" in text:
-        reply = get_crypto_prices()
-    elif "My Balance" in text:
-        reply = (
-            "💰 <b>Your Account Balance:</b>\n\n"
-            "💵 USD: $0.00\n"
-            "🪙 BTC: 0.00000000\n"
-            "🔷 ETH: 0.00000000"
-        )
-    elif "My Orders" in text:
-        reply = (
-            "📋 <b>Your Orders:</b>\n\n"
-            "You have no active orders at the moment."
-        )
-    else:
-        reply = "Please select an option from the menu below."
-
-    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
-
-def main():
-    server_thread = threading.Thread(target=start_health_server, daemon=True)
-    server_thread.start()
-
-    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    elif "Crypto Mining
     
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    print("🚀 MoneyMind Bot is running successfully!")
-    application.run_polling()
-
-if __name__ == '__main__':
-    main()
