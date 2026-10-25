@@ -23,6 +23,9 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write('MoneyMind Bot Status: OK'.encode('utf-8'))
 
+    def log_message(self, format, *args):
+        return
+
 def start_health_server():
     port = int(os.environ.get('PORT', 10000))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
@@ -124,7 +127,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("🚀 MoneyMind Bot is running successfully!")
-    application.run_polling()
+    application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
