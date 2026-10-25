@@ -1,6 +1,8 @@
 import os
 import logging
 import requests
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
@@ -10,8 +12,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ახალი ტოკენი
+# შენი ახალი ტოკენი BotFather-დან
 TELEGRAM_BOT_TOKEN = "8949326406:AAE-dz8YFEwDgcYQJ8adjjk0ELC3oi0l2Yg"
+
+# Render Web Service Health Check
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain; charset=utf-8')
+        self.end_headers()
+        self.wfile.write('MoneyMind Bot Status: OK'.encode('utf-8'))
+
+def start_health_server():
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
 
 # კლავიატურის ღილაკები
 def get_main_keyboard():
@@ -55,7 +70,7 @@ def get_crypto_prices():
     
     return "⚠️ Could not fetch prices at the moment. Please try again shortly."
 
-# ტექსტური შეტყობინებების დამუშავება (ღილაკებზე დაჭერა)
+# ტექსტური შეტყობინებების დამუშავება
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
@@ -98,12 +113,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
 def main():
+    # ფონური ვებ-სერვერის გაშვება Render-ისთვის
+    server_thread = threading.Thread(target=start_health_server, daemon=True)
+    server_thread.start()
+
+    # ტელეგრამ ბოტის გაშვება
     application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🚀 MoneyMind Bot is running!")
+    print("🚀 MoneyMind Bot is running successfully!")
     application.run_polling()
 
 if __name__ == '__main__':
