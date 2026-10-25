@@ -12,10 +12,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# შენი შემოწმებული ტოკენი BotFather-იდან
-TELEGRAM_BOT_TOKEN = "8883435722:AAGoH5dZZ1qk88-BKxxm_JCLIMjtvNj_yBI"
+# შენი ახალი მოქმედი ტოკენი BotFather-იდან
+TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3HOn9TY4rmuunBN3Fzms1gc"
 
-# 1. პატარა HTTP სერვერი Render-ის Health Check-ისთვის
+# 1. HTTP სერვერი Render-ის Health Check-ისთვის
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -129,7 +129,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("🚀 MoneyMind Bot is running successfully!")
-    application.run_polling()
+    application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
