@@ -150,35 +150,38 @@ def get_crypto_prices():
     )
 
 def get_response_text(key):
-    if key in ["Search Cheap Flights", "flights"]:
+    # გასწორდა ტექსტების შედარება, რომ ღილაკის ტექსტი ზუსტად დაემთხვეს
+    clean_key = key.strip()
+    
+    if "Search Cheap Flights" in clean_key or clean_key == "flights":
         return (
             "✈️ <b>Cheap Flights Search</b>\n\n"
             "Searching for the best flight deals worldwide...\n"
             "Please send your departure city and destination (e.g., <code>Tbilisi to London</code>)."
         )
-    elif key in ["Buy Ticket with Crypto", "buy_ticket"]:
+    elif "Buy Ticket with Crypto" in clean_key or clean_key == "buy_ticket":
         return (
             "💳 <b>Buy Tickets with Crypto</b>\n\n"
             "You can purchase airline tickets using BTC, ETH, or USDT.\n"
             "Contact support or select a route to proceed with payment."
         )
-    elif key in ["Crypto Mining", "mining"]:
+    elif "Crypto Mining" in clean_key or clean_key == "mining":
         return (
             "⛏️ <b>Crypto Mining Dashboard</b>\n\n"
             "• Active Hashes: 45.2 MH/s\n"
             "• Estimated Daily Earnings: 0.00045 BTC\n"
             "• Status: 🟢 Online"
         )
-    elif key in ["Crypto Prices", "prices"]:
+    elif "Crypto Prices" in clean_key or clean_key == "prices":
         return get_crypto_prices()
-    elif key in ["My Balance", "balance"]:
+    elif "My Balance" in clean_key or clean_key == "balance":
         return (
             "💰 <b>Your Account Balance:</b>\n\n"
             "💵 USD: $0.00\n"
             "🪙 BTC: 0.00000000\n"
             "🔷 ETH: 0.00000000"
         )
-    elif key in ["My Orders", "orders"]:
+    elif "My Orders" in clean_key or clean_key == "orders":
         return (
             "📋 <b>Your Orders:</b>\n\n"
             "You have no active orders at the moment."
