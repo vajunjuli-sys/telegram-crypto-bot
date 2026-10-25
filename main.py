@@ -6,14 +6,16 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
+# ლოგირების გამართვა
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# ჩასვი შენი მოქმედი ტოკენი BotFather-იდან
+# შენი შემოწმებული ტოკენი BotFather-იდან
 TELEGRAM_BOT_TOKEN = "8883435722:AAGoH5dZZ1qk88-BKxxm_JCLIMjtvNj_yBI"
 
+# 1. პატარა HTTP სერვერი Render-ის Health Check-ისთვის
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -22,13 +24,15 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.wfile.write('MoneyMind Bot Status: OK'.encode('utf-8'))
 
     def log_message(self, format, *args):
-        return
+        return  # ლოგების გაწმენდა
 
 def start_health_server():
     port = int(os.environ.get('PORT', 10000))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    logger.info(f"Starting Health Server on port {port}...")
     server.serve_forever()
 
+# 2. მთავარი მენიუს ღილაკები
 def get_main_keyboard():
     keyboard = [
         [KeyboardButton("✈️ Search Cheap Flights"), KeyboardButton("💳 Buy Ticket with Crypto")],
@@ -37,6 +41,7 @@ def get_main_keyboard():
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+# 3. /start ბრძანების დამუშავება
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
@@ -44,6 +49,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
+# 4. კრიპტო ფასების მიღება CoinGecko API-დან
 def get_crypto_prices():
     try:
         url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,solana&vs_currencies=usd"
@@ -68,6 +74,7 @@ def get_crypto_prices():
     
     return "⚠️ Could not fetch prices at the moment. Please try again shortly."
 
+# 5. ღილაკების და ტექსტური შეტყობინებების დამუშავება
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
@@ -109,10 +116,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
+# 6. მთავარი ფუნქცია
 def main():
+    # HTTP სერვერის გაშვება ფონურ ნაკადში (Render-ისთვის)
     server_thread = threading.Thread(target=start_health_server, daemon=True)
     server_thread.start()
 
+    # ტელეგრამ ბოტის აპლიკაცია
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start_command))
