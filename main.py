@@ -1,8 +1,8 @@
 import os
 import logging
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # ლოგირების გამართვა
 logging.basicConfig(
@@ -47,14 +47,6 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
-def get_main_keyboard():
-    keyboard = [
-        [KeyboardButton("✈️ Search Cheap Flights"), KeyboardButton("💳 Buy Ticket with Crypto")],
-        [KeyboardButton("⛏️ Crypto Mining"), KeyboardButton("📊 Crypto Prices")],
-        [KeyboardButton("💰 My Balance"), KeyboardButton("📦 My Orders")]
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
-
 def get_inline_keyboard():
     keyboard = [
         [
@@ -76,8 +68,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("Received /start command!")
     user_id = update.effective_user.id
     save_user(user_id)
-    await update.message.reply_text("<b>Welcome to MoneyMind Bot! 🚀</b>", reply_markup=get_main_keyboard(), parse_mode='HTML')
-    await update.message.reply_text("💡 <b>Interactive Control Panel:</b>", reply_markup=get_inline_keyboard(), parse_mode='HTML')
+    await update.message.reply_text(
+        "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n💡 <b>აირჩიე სასურველი სექცია ქვემოთ მოცემული მენიუდან:</b>",
+        reply_markup=get_inline_keyboard(),
+        parse_mode='HTML'
+    )
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -91,7 +86,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     data = query.data
     
     if data == "flights":
-        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
+        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: თბილისი - დუბაი):"
     elif data == "buy_ticket":
         text = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT (TRC20)\n- TON\n- BTC"
     elif data == "mining":
@@ -110,31 +105,6 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     except Exception:
         await query.message.reply_text(text, reply_markup=get_inline_keyboard(), parse_mode='HTML')
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    save_user(user_id)
-    text = update.message.text
-    logger.info(f"Received message from {user_id}: {text}")
-    
-    clean = text.lower()
-    
-    if "flight" in clean or "ფრენ" in clean or "search" in clean:
-        reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
-    elif "buy" in clean or "ticket" in clean or "ყიდვა" in clean or "ბილეთ" in clean:
-        reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT\n- TON\n- BTC"
-    elif "mining" in clean or "მაინინგ" in clean:
-        reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
-    elif "price" in clean or "ფას" in clean or "კურს" in clean:
-        reply = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin: $67,450\n• Ethereum: $2,540"
-    elif "balance" in clean or "ბალანს" in clean:
-        reply = "💰 <b>Your Balance:</b> $0.00"
-    elif "order" in clean or "შეკვეთ" in clean:
-        reply = "📦 <b>Your Orders:</b> No active orders."
-    else:
-        reply = f"✈️ <b>ძიების შედეგი მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145"
-
-    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
-
 def main():
     port = int(os.environ.get('PORT', 10000))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
@@ -149,7 +119,6 @@ def main():
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CallbackQueryHandler(handle_callback_query))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Starting bot polling...")
     application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
