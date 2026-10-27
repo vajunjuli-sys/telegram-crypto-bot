@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ტოკენი
+# ტოკენი (სუფთად, ზედმეტი სივრცეების გარეშე)
 TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3H0n9TY4rmuunBN3Fzms1gc"
 USERS_FILE = "users.txt"
 
