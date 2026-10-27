@@ -4,7 +4,7 @@ import requests
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 # ლოგირების გამართვა
@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ტოკენი და ადმინისტრატორის ID
-TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3HOn9TY4rmuunBN3Fzms1gc"
+TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3H0n9TY4rmuunBN3Fzms1gc"
 ADMIN_ID = 1090757467
 
 # მონაცემთა ფაილი
@@ -51,7 +51,7 @@ user_mining = {}
 def get_mining_data(user_id):
     if user_id not in user_mining:
         user_mining[user_id] = {
-            "active": True,  # ნაგულისხმევად აქტიურია
+            "active": True, 
             "mined_btc": 0.00001850,
             "hashrate": 51.2,
             "last_time": time.time()
@@ -64,14 +64,14 @@ def get_mining_data(user_id):
         data["last_time"] = now
     return data
 
-# HTTP სერვერი Render-ის Health Check-ისთვის
+# HTTP სერვერი Render-ის Health Check-ისთვის (გასწორებული)
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/plain; charset=utf-8')
         self.end_headers()
-        self.wfile.write('MoneyMind Bot Status: OK'.encode('utf-8'))
-
+        self.wfile.write(b"OK")
+    
     def log_message(self, format, *args):
         return
 
@@ -86,11 +86,11 @@ def get_main_keyboard():
     keyboard = [
         [KeyboardButton("✈️ Search Cheap Flights"), KeyboardButton("💳 Buy Ticket with Crypto")],
         [KeyboardButton("⛏️ Crypto Mining"), KeyboardButton("📊 Crypto Prices")],
-        [KeyboardButton("💰 My Balance"), KeyboardButton("📋 My Orders")]
+        [KeyboardButton("💰 My Balance"), KeyboardButton("📦 My Orders")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
-# ინლაინ კლავიატურა
+# ონლაინ კლავიატურა
 def get_inline_keyboard():
     keyboard = [
         [
@@ -103,7 +103,7 @@ def get_inline_keyboard():
         ],
         [
             InlineKeyboardButton("💰 Balance", callback_data="balance"),
-            InlineKeyboardButton("📋 Orders", callback_data="orders")
+            InlineKeyboardButton("📦 Orders", callback_data="orders")
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -123,22 +123,22 @@ def get_crypto_prices():
                 sol = data.get("SOL", {}).get("USD", 0)
                 return (
                     "📊 <b>Live Crypto Prices (USD):</b>\n\n"
-                    f"🪙 <b>Bitcoin (BTC):</b> ${btc:,.2f}\n"
+                    f"🟡 <b>Bitcoin (BTC):</b> ${btc:,.2f}\n"
                     f"🔷 <b>Ethereum (ETH):</b> ${eth:,.2f}\n"
-                    f"🟡 <b>Binance Coin (BNB):</b> ${bnb:,.2f}\n"
-                    f"🟣 <b>Solana (SOL):</b> ${sol:,.2f}\n\n"
-                    "🔄 <i>Updated live from Market Data</i>"
+                    f"🟠 <b>Binance Coin (BNB):</b> ${bnb:,.2f}\n"
+                    f"🟣 <b>Solana (SOL):</b> ${sol:,.2f}\n"
+                    "<i>🔄 Updated live from Market Data</i>"
                 )
     except Exception as e:
         logger.error(f"CryptoCompare fetch failed: {e}")
-
+    
     return (
         "📊 <b>Live Crypto Prices (USD):</b>\n\n"
-        "🪙 <b>Bitcoin (BTC):</b> $67,450.00\n"
+        "🟡 <b>Bitcoin (BTC):</b> $67,450.00\n"
         "🔷 <b>Ethereum (ETH):</b> $2,540.00\n"
-        "🟡 <b>Binance Coin (BNB):</b> $590.00\n"
-        "🟣 <b>Solana (SOL):</b> $172.50\n\n"
-        "🔄 <i>Updated live from Market Data</i>"
+        "🟠 <b>Binance Coin (BNB):</b> $590.00\n"
+        "🟣 <b>Solana (SOL):</b> $172.50\n"
+        "<i>🔄 Updated live from Market Data</i>"
     )
 
 # პასუხების გენერატორი
@@ -149,9 +149,9 @@ def get_response_text(key, user_id=None):
         return (
             "✈️ <b>Cheap Flights Search</b>\n\n"
             "🔍 Searching for the best flight deals worldwide...\n\n"
-            "👇 <b>გთხოვ მოწერო ნებისმიერი მიმართულება ან ქალაქი</b> (მაგალითად: <code>ბერლინი</code>, <code>რომი</code>, <code>ლონდონი</code>, <code>პარიზი</code>, <code>New York</code> ან <code>თბილისი - ვარშავა</code>) და ეგრევე გიპოვი საუკეთესო ფასებს!"
-        ), get_main_keyboard()
-        
+            "<b>გთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი</b> (მაგალითად: <i>თბილისი მილანი</i> ან <i>ბათუმი დუბაი</i>):",
+            get_main_keyboard()
+        )
     elif "buy" in clean_key or "ყიდვა" in clean_key or clean_key == "buy_ticket":
         kb = [
             [InlineKeyboardButton("✅ Confirm & Pay 0.0018 BTC", callback_data="pay_btc")],
@@ -160,12 +160,12 @@ def get_response_text(key, user_id=None):
         ]
         return (
             "💳 <b>Buy Tickets with Crypto</b>\n\n"
-            "აირჩიე გადახდის მეთოდი ბილეთის შესაძენად:\n"
+            "• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n"
             "• მიმართულება: <b>Selected Flight Deal</b>\n"
-            "• სავარაუდო ფასი: <b>$120 / 0.0018 BTC</b>\n\n"
-            "<i>დააჭირე ქვემოთ მოცემულ ღილაკს გადახდის დასასრულებლად:</i>"
-        ), InlineKeyboardMarkup(kb)
-        
+            "• სავარაუდო ფასი: <b>$120 / 0.0018 BTC</b>\n"
+            "<i>ℹ️ დააჭირე ქვემოთ მოცემულ ღილაკს გადახდის დასასრულებლად:</i>",
+            InlineKeyboardMarkup(kb)
+        )
     elif "mining" in clean_key or "მაინინგ" in clean_key:
         if user_id:
             m_data = get_mining_data(user_id)
@@ -173,79 +173,19 @@ def get_response_text(key, user_id=None):
             kb = [
                 [
                     InlineKeyboardButton("🟢 Start Mining", callback_data="start_mine"),
-                    InlineKeyboardButton("⏹️ Stop Mining", callback_data="stop_mine")
+                    InlineKeyboardButton("🟠 Stop Mining", callback_data="stop_mine")
                 ],
-                [InlineKeyboardButton("🔄 Refresh Stats", callback_data="refresh_mine")]
+                [
+                    InlineKeyboardButton("🔄 Refresh Stats", callback_data="refresh_mine")
+                ]
             ]
             text = (
                 "⛏️ <b>Crypto Mining Dashboard</b>\n\n"
                 f"• Status: {status_emoji}\n"
                 f"• Active Hashrate: <b>{m_data['hashrate']} MH/s</b>\n"
                 f"• Mined Balance: <b>{m_data['mined_btc']:.8f} BTC</b>\n"
-                f"• Estimated Daily: ~0.00045 BTC\n\n"
-                "<i>მართე შენი მაინინგი ღილაკებით ქვემოთ:</i>"
-            )
-            return text, InlineKeyboardMarkup(kb)
-        return "⛏️ <b>Crypto Mining Dashboard</b>\n• Status: 🟢 Online\n• Hashrate: 51.2 MH/s", get_main_keyboard()
-        
-    elif "price" in clean_key or "ფას" in clean_key or clean_key == "prices":
-        return get_crypto_prices(), get_main_keyboard()
-        
-    elif "balance" in clean_key or "ბალანს" in clean_key:
-        return (
-            "💰 <b>Your Account Balance:</b>\n\n"
-            "💵 USD: $0.00\n"
-            "🪙 BTC: 0.00000000\n"
-            "🔷 ETH: 0.00000000\n"
-            "💎 USDT: $0.00\n\n"
-            "💳 <i>დააკავშირე კრიპტო საფულე ბალანსის შესავსებად.</i>"
-        ), get_main_keyboard()
-        
-    elif "order" in clean_key or "შეკვეთ" in clean_key:
-        return (
-            "📋 <b>Your Orders:</b>\n\n"
-            "You have no active orders at the moment. Search for flights or crypto items to place an order."
-        ), get_main_keyboard()
-    
-    # თუ მომხმარებელმა ჩაწერა კონკრეტული მიმართულება/ქალაქი
-    if len(key.strip()) > 0 and not key.startswith("/"):
-        route_name = key.strip().title()
-        kb = [
-            [InlineKeyboardButton("💳 Buy Selected Ticket with Crypto", callback_data="buy_ticket")],
-            [InlineKeyboardButton("✈️ Search Another Flight", callback_data="flights")]
-        ]
-        return (
-           f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{route_name}</code>\n\n"
-           "✅ <b>ნაპოვნია საუკეთესო ვარიანტები მსოფლიო რეისებიდან:</b>\n\n"
-           f"1️⃣ <b>Direct Flight ➔ {route_name}</b>\n"
-           "• ავიაკომპანია: Turkish Airlines / Lufthansa\n"
-           "• თარიღი: უახლოესი რეისი (შესაბამისი სეზონი)\n"
-           "• ფასი: <b>$145 (ან 0.0022 BTC)</b>\n"
-           "• სტატუსი: 🟢 ხელმისაწვდომია\n\n"
-           f"2️⃣ <b>Budget Option ➔ {route_name} (Via Hub)</b>\n"
-           "• ავიაკომპანია: Wizz Air / Pegasus / RyanAir\n"
-           "• ფასი: <b>$89 (ან 0.0013 BTC)</b>\n\n"
-           "💳 <i>ბილეთის შესაძენად დააჭირე ქვემოთ მოცემულ ღილაკს:</i>"
-        ), InlineKeyboardMarkup(kb)
-
-    welcome_text = (
-        "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
-        "Choose an option from the menu below or use the interactive buttons:"
-    )
-    return welcome_text, get_main_keyboard()
-
-# /start ბრძანების დამუშავება
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    save_user(user_id)
-    
-    welcome_text = (
-        "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
-        "Choose an option from the menu below or use the interactive buttons:"
-    )
-    await update.message.reply_text(
-        welcome_text,
-        reply_markup=get_main_keyboard(),
+                f"• Estimated Daily: ~0.00045 BTC\n"
+                reply_markup=get_main_keyboard(),
         parse_mode='HTML'
     )
     await update.message.reply_text(
