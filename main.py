@@ -1,6 +1,5 @@
 import os
 import logging
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
@@ -10,8 +9,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ტოკენი
+# ტოკენი და რენდერის ლინკი
 TELEGRAM_BOT_TOKEN = "8916561192:AAGJinMFZH7-l_OIHGE_q1NltVpPHfIfsi4"
+RENDER_URL = "https://telegram-crypto-bot-s5lk.onrender.com"
 USERS_FILE = "users.txt"
 
 def load_users():
@@ -36,16 +36,6 @@ def save_user(user_id):
                     f.write(f"{uid}\n")
         except Exception:
             pass
-
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain; charset=utf-8')
-        self.end_headers()
-        self.wfile.write(b"OK")
-    
-    def log_message(self, format, *args):
-        return
 
 def get_main_keyboard():
     keyboard = [
@@ -73,7 +63,7 @@ def get_inline_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info("Received /start command!")
+    logger.info("Received /start command via Webhook!")
     user_id = update.effective_user.id
     save_user(user_id)
     await update.message.reply_text("<b>Welcome to MoneyMind Bot! 🚀</b>", reply_markup=get_main_keyboard(), parse_mode='HTML')
@@ -118,7 +108,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     clean = text.strip()
     
-    # ზუსტი შემოწმება ქვედა მენიუს ღილაკებზე
     if "Search Cheap Flights" in clean or "ფრენ" in clean:
         reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
     elif "Buy Ticket with Crypto" in clean or "ყიდვა" in clean or "ბილეთ" in clean:
@@ -138,13 +127,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     port = int(os.environ.get('PORT', 10000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     
-    import threading
-    t = threading.Thread(target=server.serve_forever, daemon=True)
-    t.start()
-    logger.info(f"Health check HTTP server started on port {port}")
-
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start_command))
@@ -152,8 +135,15 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("Starting bot polling...")
-    application.run_polling(drop_pending_updates=True)
+    logger.info(f"Starting webhook on port {port}...")
+    
+    # ვებჰუქის გაშვება რენდერის პორტითა და ლინკით
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        secret_token="moneymind_secret_2026",
+        webhook_url=f"{RENDER_URL}/{TELEGRAM_BOT_TOKEN}"
+    )
 
 if __name__ == '__main__':
     main()
