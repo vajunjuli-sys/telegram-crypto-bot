@@ -90,7 +90,6 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     data = query.data
     
-    # აქ ხდება ღილაკებზე ინფორმაციის მოწოდება
     if data == "flights":
         text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: თბილისი - დუბაი):"
     elif data == "buy_ticket":
@@ -117,22 +116,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     logger.info(f"Received message from {user_id}: {text}")
     
-    clean = text.lower()
+    clean = text.strip()
     
-    if "flight" in clean or "ფრენ" in clean or "მოძებნ" in clean:
+    # ზუსტი შემოწმება ქვედა მენიუს ღილაკებზე
+    if "Search Cheap Flights" in clean or "ფრენ" in clean:
         reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
-    elif "buy" in clean or "ყიდვა" in clean or "ticket" in clean or "ბილეთ" in clean:
-        reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
-    elif "mining" in clean or "მაინინგ" in clean:
+    elif "Buy Ticket with Crypto" in clean or "ყიდვა" in clean or "ბილეთ" in clean:
+        reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT\n- TON\n- BTC"
+    elif "Crypto Mining" in clean or "მაინინგ" in clean:
         reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
-    elif "price" in clean or "ფას" in clean or "კურს" in clean:
-        reply = "📊 <b>Live Crypto Prices:</b>\n\nBitcoin: $67,450\nEthereum: $2,540"
-    elif "balance" in clean or "ბალანს" in clean:
+    elif "Crypto Prices" in clean or "ფას" in clean or "კურს" in clean:
+        reply = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin: $67,450\n• Ethereum: $2,540"
+    elif "My Balance" in clean or "ბალანს" in clean:
         reply = "💰 <b>Your Balance:</b> $0.00"
-    elif "order" in clean or "შეკვეთ" in clean:
+    elif "My Orders" in clean or "შეკვეთ" in clean:
         reply = "📦 <b>Your Orders:</b> No active orders."
     else:
-        reply = f"✈️ <b>ძიების შედეგი მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145\n• Baggage included"
+        reply = f"✈️ <b>ძიების შედეგი მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145"
 
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
