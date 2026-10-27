@@ -91,9 +91,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
 async def post_init(application: Application):
-    # ძველი ვებჰუქის სრულად გასუფთავება, რომ პოლინგმა შეტყობინებები მიიღოს
     await application.bot.delete_webhook(drop_pending_updates=True)
-    logger.info("Webhook deleted, starting clean polling...")
+    logger.info("Webhook cleared successfully!")
 
 def main():
     port = int(os.environ.get('PORT', 10000))
