@@ -151,4 +151,10 @@ def get_response_text(key, user_id=None):
             "🔍 Searching for the best flight deals worldwide...\n\n"
             "<b>გთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი</b> (მაგალითად: <i>თბილისი მილანი</i> ან <i>ბათუმი დუბაი</i>):"
         )
-        
+        return msg_text, get_main_keyboard()
+    
+    elif "buy" in clean_key or "ყიდვა" in clean_key or clean_key == "buy_ticket":
+        kb = [
+            [InlineKeyboardButton("✅ Confirm & Pay 0.0018 BTC", callback_data="pay_btc")],
+            [InlineKeyboardButton("✅ Pay with USDT (TRC20)", callback
+                                  
