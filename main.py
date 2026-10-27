@@ -9,7 +9,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ტოკენი და რენდერის ზუსტი ლინკი
+# ტოკენი და რენდერის ლინკი
 TELEGRAM_BOT_TOKEN = "8916561192:AAGJinMFZH7-l_OIHGE_q1NltVpPHfIfsi4"
 RENDER_URL = "https://telegram-crypto-bot-s5lk.onrender.com"
 USERS_FILE = "users.txt"
@@ -59,7 +59,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
     text = update.message.text
-    logger.info(f"Received message from {user_id}: {text}")
+    logger.info(f"--> Received message from {user_id}: {text}")
     
     clean = text.lower()
     
@@ -90,7 +90,7 @@ def main():
 
     logger.info(f"Starting webhook on port {port}...")
     
-    # ვებჰუქის გაშვება რენდერის სერვერისთვის
+    # ვებჰუქის სწორი გაშვება რენდერისთვის
     application.run_webhook(
         listen="0.0.0.0",
         port=port,
