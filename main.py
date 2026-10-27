@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ახალი ტოკენი BotFather-დან
+# ტოკენი
 TELEGRAM_BOT_TOKEN = "8916561192:AAGJinMFZH7-l_OIHGE_q1NltVpPHfIfsi4"
 USERS_FILE = "users.txt"
 
@@ -152,8 +152,8 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("Starting bot polling...")
-    application.run_polling(drop_pending_updates=True)
+    logger.info("Starting bot polling with drop_pending_updates=True...")
+    application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
