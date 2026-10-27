@@ -12,11 +12,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ტოკენი და ადმინისტრატორის ID
+# ტოკენი
 TELEGRAM_BOT_TOKEN = "8883435722:AAHHc0s38PEl3H0n9TY4rmuunBN3Fzms1gc"
-ADMIN_ID = 1090757467
-
-# მონაცემთა ფაილი
 USERS_FILE = "users.txt"
 
 def load_users():
@@ -24,8 +21,8 @@ def load_users():
         try:
             with open(USERS_FILE, "r") as f:
                 return set(line.strip() for line in f if line.strip())
-        except Exception as e:
-            logger.error(f"Error loading users: {e}")
+        except Exception:
+            pass
     return set()
 
 def save_user(user_id):
@@ -39,26 +36,8 @@ def save_user(user_id):
             with open(USERS_FILE, "w") as f:
                 for uid in users:
                     f.write(f"{uid}\n")
-        except Exception as e:
-            logger.error(f"Error saving user: {e}")
-
-user_mining = {}
-
-def get_mining_data(user_id):
-    if user_id not in user_mining:
-        user_mining[user_id] = {
-            "active": True, 
-            "mined_btc": 0.00001850,
-            "hashrate": 51.2,
-            "last_time": time.time()
-        }
-    data = user_mining[user_id]
-    if data["active"]:
-        now = time.time()
-        diff = now - data["last_time"]
-        data["mined_btc"] += (diff * 0.00000003)
-        data["last_time"] = now
-    return data
+        except Exception:
+            pass
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -95,35 +74,6 @@ def get_inline_keyboard():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def get_crypto_prices():
-    return (
-        "📊 <b>Live Crypto Prices (USD):</b>\n\n"
-        "🟡 <b>Bitcoin (BTC):</b> $67,450.00\n"
-        "🔷 <b>Ethereum (ETH):</b> $2,540.00\n"
-        "🟠 <b>Binance Coin (BNB):</b> $590.00\n"
-        "🟣 <b>Solana (SOL):</b> $172.50\n"
-        "<i>🔄 Updated live from Market Data</i>"
-    )
-
-def get_response_text(key, user_id=None):
-    text = str(key).strip()
-    
-    if "Flight" in text or "ფრენ" in text:
-        return "✈️ <b>Cheap Flights Search</b>\n\n🔍 Searching for the best flight deals worldwide...\n\nგთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი (მაგალითად: <i>თბილისი მილანი</i>):", get_main_keyboard()
-    elif "Buy Ticket" in text or "ყიდვა" in text:
-        kb = [[InlineKeyboardButton("✅ Pay 0.0018 BTC", callback_data="pay_btc")], [InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")]]
-        return "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:", InlineKeyboardMarkup(kb)
-    elif "Mining" in text or "მაინინგ" in text:
-        return "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active (Mining...)\n• Active Hashrate: <b>51.2 MH/s</b>\n• Mined Balance: <b>0.00001850 BTC</b>", get_main_keyboard()
-    elif "Prices" in text or "ფას" in text:
-        return get_crypto_prices(), get_main_keyboard()
-    elif "Balance" in text or "ბალანს" in text:
-        return "💰 <b>Your Account Balance:</b>\n\n💵 USD: $0.00\n🟡 BTC: 0.00000000", get_main_keyboard()
-    elif "Orders" in text or "შეკვეთ" in text:
-        return "📦 <b>Your Orders:</b>\n\nYou have no active orders at the moment.", get_main_keyboard()
-
-    return f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{key}</code>\n\n✅ <b>ნაპოვნია საუკეთესო ვარიანტები:</b>\n• 1️⃣ Direct Flight → $145 (ან 0.0022 BTC)\n• 2️⃣ Budget Option → $89", get_main_keyboard()
-
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
@@ -139,18 +89,51 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    res_text, markup = get_response_text(query.data, update.effective_user.id)
+    data = query.data
+    
+    if data == "flights":
+        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: <i>თბილისი მილანი</i>):"
+    elif data == "buy_ticket":
+        text = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
+    elif data == "mining":
+        text = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
+    elif data == "prices":
+        text = "📊 <b>Live Crypto Prices:</b>\n\nBitcoin: $67,450\nEthereum: $2,540"
+    elif data == "balance":
+        text = "💰 <b>Your Balance:</b> $0.00"
+    elif data == "orders":
+        text = "📦 <b>Your Orders:</b> No active orders."
+    else:
+        text = f"რეჟიმი: {data}"
+        
     try:
-        await query.message.edit_text(res_text, reply_markup=markup, parse_mode='HTML')
+        await query.message.edit_text(text, reply_markup=get_inline_keyboard(), parse_mode='HTML')
     except Exception:
-        await query.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
+        await query.message.reply_text(text, reply_markup=get_inline_keyboard(), parse_mode='HTML')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
     text = update.message.text
-    res_text, markup = get_response_text(text, user_id)
-    await update.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
+    logger.info(f"Received message from {user_id}: {text}")
+    
+    clean = text.strip()
+    if "Flight" in clean or "ფრენ" in clean:
+        reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: <i>თბილისი მილანი</i>):"
+    elif "Buy Ticket" in clean or "ყიდვა" in clean:
+        reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
+    elif "Mining" in clean or "მაინინგ" in clean:
+        reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
+    elif "Prices" in clean or "ფას" in clean:
+        reply = "📊 <b>Live Crypto Prices:</b>\n\nBitcoin: $67,450\nEthereum: $2,540"
+    elif "Balance" in clean or "ბალანს" in clean:
+        reply = "💰 <b>Your Balance:</b> $0.00"
+    elif "Orders" in clean or "შეკვეთ" in clean:
+        reply = "📦 <b>Your Orders:</b> No active orders."
+    else:
+        reply = f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{clean}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145\n• Budget → $89"
+
+    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
 def main():
     try:
@@ -168,6 +151,7 @@ def main():
         t = threading.Thread(target=server.serve_forever, daemon=True)
         t.start()
         
+        logger.info("Starting polling with drop_pending_updates=True...")
         application.run_polling(drop_pending_updates=True)
     except Exception as e:
         logger.critical(f"Critical error: {e}", exc_info=True)
