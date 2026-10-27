@@ -90,18 +90,19 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     data = query.data
     
+    # აქ ხდება ღილაკებზე ინფორმაციის მოწოდება
     if data == "flights":
-        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
+        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: თბილისი - დუბაი):"
     elif data == "buy_ticket":
-        text = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
+        text = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT (TRC20)\n- TON\n- BTC"
     elif data == "mining":
-        text = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
+        text = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>\n• Unpaid Balance: <b>0.0042 BTC</b>"
     elif data == "prices":
-        text = "📊 <b>Live Crypto Prices:</b>\n\nBitcoin: $67,450\nEthereum: $2,540"
+        text = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450 (+2.4%)\n• Ethereum (ETH): $2,540 (+1.1%)\n• Toncoin (TON): $5.20"
     elif data == "balance":
-        text = "💰 <b>Your Balance:</b> $0.00"
+        text = "💰 <b>Your Balance:</b>\n\n• USD: $0.00\n• Crypto: 0.000000 BTC"
     elif data == "orders":
-        text = "📦 <b>Your Orders:</b> No active orders."
+        text = "📦 <b>Your Orders:</b>\n\nშენ ჯერ არ გაქვს აქტიური შეკვეთები."
     else:
         text = f"რეჟიმი: {data}"
         
@@ -118,20 +119,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     clean = text.lower()
     
-    if "flight" in clean or "ფრენ" in clean:
+    if "flight" in clean or "ფრენ" in clean or "მოძებნ" in clean:
         reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
-    elif "buy" in clean or "ყიდვა" in clean or "ticket" in clean:
+    elif "buy" in clean or "ყიდვა" in clean or "ticket" in clean or "ბილეთ" in clean:
         reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
     elif "mining" in clean or "მაინინგ" in clean:
         reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
-    elif "price" in clean or "ფას" in clean:
+    elif "price" in clean or "ფას" in clean or "კურს" in clean:
         reply = "📊 <b>Live Crypto Prices:</b>\n\nBitcoin: $67,450\nEthereum: $2,540"
     elif "balance" in clean or "ბალანს" in clean:
         reply = "💰 <b>Your Balance:</b> $0.00"
     elif "order" in clean or "შეკვეთ" in clean:
         reply = "📦 <b>Your Orders:</b> No active orders."
     else:
-        reply = f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145"
+        reply = f"✈️ <b>ძიების შედეგი მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145\n• Baggage included"
 
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
