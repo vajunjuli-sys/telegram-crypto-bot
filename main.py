@@ -1,5 +1,6 @@
 import os
 import logging
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -9,9 +10,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ტოკენი და რენდერის ლინკი
+# ტოკენი
 TELEGRAM_BOT_TOKEN = "8916561192:AAGJinMFZH7-l_OIHGE_q1NltVpPHfIfsi4"
-RENDER_URL = "https://telegram-crypto-bot-s5lk.onrender.com"
 USERS_FILE = "users.txt"
 
 def load_users():
@@ -37,6 +37,16 @@ def save_user(user_id):
         except Exception:
             pass
 
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain; charset=utf-8')
+        self.end_headers()
+        self.wfile.write(b"OK")
+    
+    def log_message(self, format, *args):
+        return
+
 def get_main_keyboard():
     keyboard = [
         [KeyboardButton("✈️ Search Cheap Flights"), KeyboardButton("💳 Buy Ticket with Crypto")],
@@ -46,7 +56,7 @@ def get_main_keyboard():
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info("Received /start command via Webhook!")
+    logger.info("Received /start command!")
     user_id = update.effective_user.id
     save_user(user_id)
     await update.message.reply_text(
@@ -59,22 +69,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
     text = update.message.text
-    logger.info(f"--> Received message from {user_id}: {text}")
+    logger.info(f"Received message from {user_id}: {text}")
     
     clean = text.lower()
     
     if "flight" in clean or "ფრენ" in clean or "search" in clean:
-        reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
+        reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: თბილისი - დუბაი):"
     elif "buy" in clean or "ticket" in clean or "ყიდვა" in clean or "ბილეთ" in clean:
         reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT (TRC20)\n- TON\n- BTC"
     elif "mining" in clean or "მაინინგ" in clean:
-        reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
+        reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>\n• Unpaid Balance: <b>0.0042 BTC</b>"
     elif "price" in clean or "ფას" in clean or "კურს" in clean:
-        reply = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin: $67,450\n• Ethereum: $2,540"
+        reply = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450 (+2.4%)\n• Ethereum (ETH): $2,540 (+1.1%)\n• Toncoin (TON): $5.20"
     elif "balance" in clean or "ბალანს" in clean:
-        reply = "💰 <b>Your Balance:</b> $0.00"
+        reply = "💰 <b>Your Balance:</b>\n\n• USD: $0.00\n• Crypto: 0.000000 BTC"
     elif "order" in clean or "შეკვეთ" in clean:
-        reply = "📦 <b>Your Orders:</b> No active orders."
+        reply = "📦 <b>Your Orders:</b>\n\nშენ ჯერ არ გაქვს აქტიური შეკვეთები."
     else:
         reply = f"✈️ <b>ძიების შედეგი მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145"
 
@@ -82,21 +92,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     
+    import threading
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    logger.info(f"Health check HTTP server started on port {port}")
+
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info(f"Starting webhook on port {port}...")
-    
-    # ვებჰუქის სწორი გაშვება რენდერისთვის
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        secret_token="moneymind_secret_2026",
-        webhook_url=f"{RENDER_URL}/{TELEGRAM_BOT_TOKEN}"
-    )
+    logger.info("Starting bot polling...")
+    application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
