@@ -117,21 +117,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     logger.info(f"Received message from {user_id}: {text}")
     
-    clean = text.strip()
-    if "Flight" in clean or "ფრენ" in clean:
+    clean = text.lower()
+    
+    if "flight" in clean or "ფრენ" in clean:
         reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: <i>თბილისი მილანი</i>):"
-    elif "Buy Ticket" in clean or "ყიდვა" in clean:
+    elif "buy" in clean or "ყიდვა" in clean or "ticket" in clean:
         reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
-    elif "Mining" in clean or "მაინინგ" in clean:
+    elif "mining" in clean or "მაინინგ" in clean:
         reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
-    elif "Prices" in clean or "ფას" in clean:
+    elif "price" in clean or "ფას" in clean:
         reply = "📊 <b>Live Crypto Prices:</b>\n\nBitcoin: $67,450\nEthereum: $2,540"
-    elif "Balance" in clean or "ბალანს" in clean:
+    elif "balance" in clean or "ბალანს" in clean:
         reply = "💰 <b>Your Balance:</b> $0.00"
-    elif "Orders" in clean or "შეკვეთ" in clean:
+    elif "order" in clean or "შეკვეთ" in clean:
         reply = "📦 <b>Your Orders:</b> No active orders."
     else:
-        reply = f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{clean}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145\n• Budget → $89"
+        reply = f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145\n• Budget → $89"
 
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
