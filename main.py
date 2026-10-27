@@ -90,6 +90,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
+async def post_init(application: Application):
+    # ძველი ვებჰუქის სრულად გასუფთავება, რომ პოლინგმა შეტყობინებები მიიღოს
+    await application.bot.delete_webhook(drop_pending_updates=True)
+    logger.info("Webhook deleted, starting clean polling...")
+
 def main():
     port = int(os.environ.get('PORT', 10000))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
@@ -99,7 +104,7 @@ def main():
     t.start()
     logger.info(f"Health check HTTP server started on port {port}")
 
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
