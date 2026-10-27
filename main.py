@@ -11,7 +11,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = "8902943709:AAecjihzf7krnnEMvqQXxEtnjJ1tql1vjPc"
+# ახალი ტოკენი BotFather-დან
+TELEGRAM_BOT_TOKEN = "8916561192:AAGJinMFZH7-l_OIHGE_q1NltVpPHfIfsi4"
 USERS_FILE = "users.txt"
 
 def load_users():
