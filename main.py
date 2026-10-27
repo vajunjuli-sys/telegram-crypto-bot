@@ -97,7 +97,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     elif data == "mining":
         text = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>\n• Unpaid Balance: <b>0.0042 BTC</b>"
     elif data == "prices":
-        text = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450\n• Ethereum (ETH): $2,540\n• Toncoin (TON): $5.20"
+        text = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450 (+2.4%)\n• Ethereum (ETH): $2,540 (+1.1%)\n• Toncoin (TON): $5.20"
     elif data == "balance":
         text = "💰 <b>Your Balance:</b>\n\n• USD: $0.00\n• Crypto: 0.000000 BTC"
     elif data == "orders":
@@ -116,44 +116,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     logger.info(f"Received message from {user_id}: {text}")
     
-    clean = text.strip()
+    clean = text.lower()
     
-    if "Search Cheap Flights" in clean or "ფრენ" in clean:
+    if "flight" in clean or "ფრენ" in clean or "search" in clean:
         reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
-    elif "Buy Ticket with Crypto" in clean or "ყიდვა" in clean or "ბილეთ" in clean:
+    elif "buy" in clean or "ticket" in clean or "ყიდვა" in clean or "ბილეთ" in clean:
         reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT\n- TON\n- BTC"
-    elif "Crypto Mining" in clean or "მაინინგ" in clean:
+    elif "mining" in clean or "მაინინგ" in clean:
         reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>"
-    elif "Crypto Prices" in clean or "ფას" in clean or "კურს" in clean:
+    elif "price" in clean or "ფას" in clean or "კურს" in clean:
         reply = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin: $67,450\n• Ethereum: $2,540"
-    elif "My Balance" in clean or "ბალანს" in clean:
-        reply = "💰 <b>Your Balance:</b> $0.00"
-    elif "My Orders" in clean or "შეკვეთ" in clean:
-        reply = "📦 <b>Your Orders:</b> No active orders."
-    else:
-        reply = f"✈️ <b>ძიების შედეგი მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145"
-
-    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
-
-def main():
-    port = int(os.environ.get('PORT', 10000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    
-    import threading
-    t = threading.Thread(target=server.serve_forever, daemon=True)
-    t.start()
-    logger.info(f"Health check HTTP server started on port {port}")
-
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("stats", stats_command))
-    application.add_handler(CallbackQueryHandler(handle_callback_query))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    logger.info("Starting bot polling with drop_pending_updates=True...")
-    application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-
-if __name__ == '__main__':
-    main()
-    
+    elif "balance" in clean or "ბალანს" in clean:
+        
