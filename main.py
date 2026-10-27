@@ -1,6 +1,5 @@
 import os
 import logging
-import requests
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -12,7 +11,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ახალი ტოკენი BotFather-დან
 TELEGRAM_BOT_TOKEN = "8902943709:AAecjihzf7krnnEMvqQXxEtnjJ1tql1vjPc"
 USERS_FILE = "users.txt"
 
@@ -75,6 +73,7 @@ def get_inline_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info("Received /start command!")
     user_id = update.effective_user.id
     save_user(user_id)
     await update.message.reply_text("<b>Welcome to MoneyMind Bot! 🚀</b>", reply_markup=get_main_keyboard(), parse_mode='HTML')
@@ -92,7 +91,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     data = query.data
     
     if data == "flights":
-        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: <i>თბილისი მილანი</i>):"
+        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
     elif data == "buy_ticket":
         text = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
     elif data == "mining":
@@ -120,7 +119,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clean = text.lower()
     
     if "flight" in clean or "ფრენ" in clean:
-        reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: <i>თბილისი მილანი</i>):"
+        reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
     elif "buy" in clean or "ყიდვა" in clean or "ticket" in clean:
         reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:"
     elif "mining" in clean or "მაინინგ" in clean:
@@ -132,30 +131,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif "order" in clean or "შეკვეთ" in clean:
         reply = "📦 <b>Your Orders:</b> No active orders."
     else:
-        reply = f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145\n• Budget → $89"
+        reply = f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145"
 
     await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
 def main():
-    try:
-        application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    
+    import threading
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    logger.info(f"Health check HTTP server started on port {port}")
 
-        application.add_handler(CommandHandler("start", start_command))
-        application.add_handler(CommandHandler("stats", stats_command))
-        application.add_handler(CallbackQueryHandler(handle_callback_query))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
-        port = int(os.environ.get('PORT', 10000))
-        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-        
-        import threading
-        t = threading.Thread(target=server.serve_forever, daemon=True)
-        t.start()
-        
-        logger.info("Starting polling with drop_pending_updates=True...")
-        application.run_polling(drop_pending_updates=True)
-    except Exception as e:
-        logger.critical(f"Critical error: {e}", exc_info=True)
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("stats", stats_command))
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    logger.info("Starting bot polling...")
+    application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
