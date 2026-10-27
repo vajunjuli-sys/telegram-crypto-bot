@@ -77,9 +77,12 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 
 def start_health_server():
     port = int(os.environ.get('PORT', 10000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    logger.info(f"Starting Health Server on port {port}...")
-    server.serve_forever()
+    try:
+        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+        logger.info(f"Starting Health Server on port {port}...")
+        server.serve_forever()
+    except Exception as e:
+        logger.error(f"Health Server failed to start: {e}")
 
 # მთავარი მენიუს კლავიატურა
 def get_main_keyboard():
@@ -195,4 +198,187 @@ def get_response_text(key, user_id=None):
         return "⛏️ <b>Crypto Mining Dashboard</b>\nStatus: 🟢 Online", get_main_keyboard()
     
     elif "price" in clean_key or "ფას" in clean_key or clean_key == "prices":
-        return get_crypto_prices(), get
+        return get_crypto_prices(), get_main_keyboard()
+    
+    elif "balance" in clean_key or "ბალანს" in clean_key:
+        msg_text = (
+            "💰 <b>Your Account Balance:</b>\n\n"
+            "💵 USD: $0.00\n"
+            "🟡 BTC: 0.00000000\n"
+            "🔷 ETH: 0.00000000\n"
+            "💎 USDT: $0.00\n\n"
+            "<i>💳 დააკავშირე კრიპტო საფულე ბალანსის შესავსებად.</i>"
+        )
+        return msg_text, get_main_keyboard()
+    
+    elif "order" in clean_key or "შეკვეთ" in clean_key:
+        msg_text = (
+            "📦 <b>Your Orders:</b>\n\n"
+            "You have no active orders at the moment. Search for flights or crypto items."
+        )
+        return msg_text, get_main_keyboard()
+    
+    if len(key.strip()) > 0 and not key.startswith("/"):
+        route_name = key.strip().title()
+        kb = [
+            [InlineKeyboardButton("💳 Buy Selected Ticket with Crypto", callback_data="buy_ticket")],
+            [InlineKeyboardButton("✈️ Search Another Flight", callback_data="flights")]
+        ]
+        msg_text = (
+            f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{route_name}</code>\n\n"
+            f"✅ <b>ნაპოვნია საუკეთესო ვარიანტები მსოფლიო რიოსებიდან:</b>\n"
+            f"• 1️⃣ <b>Direct Flight → {route_name}</b>\n"
+            f"• 🏢 ავიაკომპანია: Turkish Airlines / Lufthansa\n"
+            f"• 📅 თარიღი: უახლოესი რეისი (შესაბამისი სეზონი)\n"
+            f"• 💵 ფასი: <b>$145 (ან 0.0022 BTC)</b>\n"
+            f"• 🟢 სტატუსი: 🟡 ხელმისაწვდომია\n\n"
+            f"• 2️⃣ <b>Budget Option → {route_name} (Via Hub)</b>\n"
+            f"• 🏢 ავიაკომპანია: Wizz Air / Pegasus / RyanAir\n"
+            f"• 💵 ფასი: <b>$89 (ან 0.0013 BTC)</b>\n"
+            f"• 💳 <i>ბილეთის შესაძენად დააჭირე ქვემოთ მოცემულ ღილაკს:</i>"
+        )
+        return msg_text, InlineKeyboardMarkup(kb)
+
+    welcome_text = (
+        "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
+        "Choose an option from the menu below or use the interactive buttons:"
+    )
+    return welcome_text, get_main_keyboard()
+
+# /start ბრძანების დამუშავება
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    save_user(user_id)
+
+    welcome_text = (
+        "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n"
+        "Choose an option from the menu below or use the interactive buttons:"
+    )
+    await update.message.reply_text(
+        welcome_text,
+        reply_markup=get_main_keyboard(),
+        parse_mode='HTML'
+    )
+    await update.message.reply_text(
+        "💡 <b>Interactive Control Panel:</b>",
+        reply_markup=get_inline_keyboard(),
+        parse_mode='HTML'
+    )
+
+# /stats ბრძანება
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    save_user(user_id)
+    users = load_users()
+    count = len(users)
+
+    msg = (
+        f"📊 <b>MoneyMind Bot - სტატისტიკა:</b>\n\n"
+        f"👥 სულ მომხმარებლები: <b>{count}</b>\n"
+        f"🆔 შენი ID: <code>{user_id}</code>"
+    )
+    await update.message.reply_text(msg, parse_mode='HTML')
+
+# ონლაინ ღილაკების დამუშავება
+async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = update.effective_user.id
+    save_user(user_id)
+
+    data = query.data
+    if data == "start_mine":
+        user_mining[user_id] = get_mining_data(user_id)
+        user_mining[user_id]["active"] = True
+        user_mining[user_id]["last_time"] = time.time()
+        await query.answer("🟢 მაინინგი წარმატებით ჩაირთო!", show_alert=True)
+        text, markup = get_response_text("mining", user_id)
+        try:
+            await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        except Exception:
+            pass
+        return
+    elif data == "stop_mine":
+        user_mining[user_id] = get_mining_data(user_id)
+        user_mining[user_id]["active"] = False
+        await query.answer("🔴 მაინინგი შეჩერებულია!", show_alert=True)
+        text, markup = get_response_text("mining", user_id)
+        try:
+            await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        except Exception:
+            pass
+        return
+    elif data == "refresh_mine":
+        user_mining[user_id] = get_mining_data(user_id)
+        await query.answer("🔄 მონაცემები განახლდა!", show_alert=False)
+        text, markup = get_response_text("mining", user_id)
+        try:
+            await query.message.edit_text(text, reply_markup=markup, parse_mode='HTML')
+        except Exception:
+            pass
+        return
+    elif data == "pay_btc":
+        await query.answer()
+        await query.message.reply_text(
+            "🟡 <b>Bitcoin Payment Checkout</b>\n\n"
+            "გადასრიცხეთ ზუსტად <code>0.0018 BTC</code> მისამართზე:\n"
+            "<code>bc1qxy2kgdygjsqrtzq2n0yrf2493p83kkfhw0wlh</code>\n"
+            "⏳ <i>გადახდის სტატუსი: მოლოდინში (დასტურდება ბლოკჩეინში).</i>",
+            parse_mode='HTML'
+        )
+        return
+    elif data == "pay_usdt":
+        await query.answer()
+        await query.message.reply_text(
+            "💎 <b>USDT (TRC20) Payment Checkout</b>\n\n"
+            "გადასრიცხეთ ზუსტად <code>120.00 USDT</code> მისამართზე:\n"
+            "<code>TJ7T8kxR7Vv4N9s2K4z8L1m9P2q3R5s6T7</code>\n"
+            "⏳ <i>გადახდის სტატუსი: მოლოდინში.</i>",
+            parse_mode='HTML'
+        )
+        return
+    elif data == "cancel_order":
+        await query.answer("❌ გაუქმებულია")
+        await query.message.reply_text("❌ შეკვეთა გაუქმებულია.", parse_mode='HTML')
+        return
+
+    await query.answer()
+    res_text, markup = get_response_text(data, user_id)
+    await query.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
+
+# ტექსტური შეტყობინებების დამუშავება
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    save_user(user_id)
+
+    text = update.message.text
+    clean_txt = text.replace(":", "").strip()
+    if clean_txt.startswith("/start"):
+        await start_command(update, context)
+        return
+    elif clean_txt.startswith("/stats"):
+        await stats_command(update, context)
+        return
+
+    res_text, markup = get_response_text(clean_txt, user_id)
+    await update.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
+
+def main():
+    try:
+        server_thread = threading.Thread(target=start_health_server, daemon=True)
+        server_thread.start()
+
+        application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+
+        application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("stats", stats_command))
+        application.add_handler(CommandHandler("help", start_command))
+        application.add_handler(CallbackQueryHandler(handle_callback_query))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+        print("MoneyMind Bot is running successfully!")
+        application.run_polling(drop_pending_updates=True)
+    except Exception as e:
+        logger.critical(f"Critical error in main: {e}", exc_info=True)
+
+if __name__ == '__main__':
+    main()
