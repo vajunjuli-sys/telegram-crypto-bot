@@ -156,5 +156,43 @@ def get_response_text(key, user_id=None):
     elif "buy" in clean_key or "ყიდვა" in clean_key or clean_key == "buy_ticket":
         kb = [
             [InlineKeyboardButton("✅ Confirm & Pay 0.0018 BTC", callback_data="pay_btc")],
-            [InlineKeyboardButton("✅ Pay with USDT (TRC20)", callback
-                                  
+            [InlineKeyboardButton("✅ Pay with USDT (TRC20)", callback_data="pay_usdt")],
+            [InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")]
+        ]
+        msg_text = (
+            "💳 <b>Buy Tickets with Crypto</b>\n\n"
+            "• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n"
+            "• მიმართულება: <b>Selected Flight Deal</b>\n"
+            "• სავარაუდო ფასი: <b>$120 / 0.0018 BTC</b>\n"
+            "<i>ℹ️ დააჭირე ქვემოთ მოცემულ ღილაკს გადახდის დასასრულებლად:</i>"
+        )
+        return msg_text, InlineKeyboardMarkup(kb)
+    
+    elif "mining" in clean_key or "მაინინგ" in clean_key:
+        if user_id:
+            m_data = get_mining_data(user_id)
+            status_emoji = "🟢 Active (Mining...)" if m_data["active"] else "🔴 Paused"
+            kb = [
+                [
+                    InlineKeyboardButton("🟢 Start Mining", callback_data="start_mine"),
+                    InlineKeyboardButton("🟠 Stop Mining", callback_data="stop_mine")
+                ],
+                [
+                    InlineKeyboardButton("🔄 Refresh Stats", callback_data="refresh_mine")
+                ]
+            ]
+            hr = m_data['hashrate']
+            mb = m_data['mined_btc']
+            text = (
+                "⛏️ <b>Crypto Mining Dashboard</b>\n\n"
+                f"• Status: {status_emoji}\n"
+                f"• Active Hashrate: <b>{hr} MH/s</b>\n"
+                f"• Mined Balance: <b>{mb:.8f} BTC</b>\n"
+                "• Estimated Daily: ~0.00045 BTC\n"
+                "<i>ℹ️ მართე შენი მაინინგი ღილაკებით ქვემოთ:</i>"
+            )
+            return text, InlineKeyboardMarkup(kb)
+        return "⛏️ <b>Crypto Mining Dashboard</b>\nStatus: 🟢 Online", get_main_keyboard()
+    
+    elif "price" in clean_key or "ფას" in clean_key or clean_key == "prices":
+        return get_crypto_prices(), get
