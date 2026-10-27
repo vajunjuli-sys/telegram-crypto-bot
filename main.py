@@ -106,23 +106,23 @@ def get_crypto_prices():
     )
 
 def get_response_text(key, user_id=None):
-    text_lower = str(key).strip()
+    text = str(key).strip()
     
-    if "Flight" in text_lower or "ფრენ" in text_lower:
+    if "Flight" in text or "ფრენ" in text:
         return "✈️ <b>Cheap Flights Search</b>\n\n🔍 Searching for the best flight deals worldwide...\n\nგთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი (მაგალითად: <i>თბილისი მილანი</i>):", get_main_keyboard()
-    elif "Buy Ticket" in text_lower or "ყიდვა" in text_lower:
+    elif "Buy Ticket" in text or "ყიდვა" in text:
         kb = [[InlineKeyboardButton("✅ Pay 0.0018 BTC", callback_data="pay_btc")], [InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")]]
         return "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:", InlineKeyboardMarkup(kb)
-    elif "Mining" in text_lower or "მაინინგ" in text_lower:
+    elif "Mining" in text or "მაინინგ" in text:
         return "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active (Mining...)\n• Active Hashrate: <b>51.2 MH/s</b>\n• Mined Balance: <b>0.00001850 BTC</b>", get_main_keyboard()
-    elif "Prices" in text_lower or "ფას" in text_lower:
+    elif "Prices" in text or "ფას" in text:
         return get_crypto_prices(), get_main_keyboard()
-    elif "Balance" in text_lower or "ბალანს" in text_lower:
+    elif "Balance" in text or "ბალანს" in text:
         return "💰 <b>Your Account Balance:</b>\n\n💵 USD: $0.00\n🟡 BTC: 0.00000000", get_main_keyboard()
-    elif "Orders" in text_lower or "შეკვეთ" in text_lower:
+    elif "Orders" in text or "შეკვეთ" in text:
         return "📦 <b>Your Orders:</b>\n\nYou have no active orders at the moment.", get_main_keyboard()
 
-    return "<b>Welcome to MoneyMind Bot! 🚀</b>\n\nChoose an option from the menu below:", get_main_keyboard()
+    return f"✈️ <b>ფრენების ძიება მიმართულებით:</b> <code>{key}</code>\n\n✅ <b>ნაპოვნია საუკეთესო ვარიანტები:</b>\n• 1️⃣ Direct Flight → $145 (ან 0.0022 BTC)\n• 2️⃣ Budget Option → $89", get_main_keyboard()
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
