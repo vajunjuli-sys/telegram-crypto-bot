@@ -106,20 +106,20 @@ def get_crypto_prices():
     )
 
 def get_response_text(key, user_id=None):
-    clean_key = str(key).strip().lower()
+    text_lower = str(key).strip()
     
-    if "flight" in clean_key or "ფრენ" in clean_key:
+    if "Flight" in text_lower or "ფრენ" in text_lower:
         return "✈️ <b>Cheap Flights Search</b>\n\n🔍 Searching for the best flight deals worldwide...\n\nგთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი (მაგალითად: <i>თბილისი მილანი</i>):", get_main_keyboard()
-    elif "buy" in clean_key or "ყიდვა" in clean_key:
+    elif "Buy Ticket" in text_lower or "ყიდვა" in text_lower:
         kb = [[InlineKeyboardButton("✅ Pay 0.0018 BTC", callback_data="pay_btc")], [InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")]]
         return "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:", InlineKeyboardMarkup(kb)
-    elif "mining" in clean_key or "მაინინგ" in clean_key:
+    elif "Mining" in text_lower or "მაინინგ" in text_lower:
         return "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active (Mining...)\n• Active Hashrate: <b>51.2 MH/s</b>\n• Mined Balance: <b>0.00001850 BTC</b>", get_main_keyboard()
-    elif "price" in clean_key or "ფას" in clean_key:
+    elif "Prices" in text_lower or "ფას" in text_lower:
         return get_crypto_prices(), get_main_keyboard()
-    elif "balance" in clean_key or "ბალანს" in clean_key:
+    elif "Balance" in text_lower or "ბალანს" in text_lower:
         return "💰 <b>Your Account Balance:</b>\n\n💵 USD: $0.00\n🟡 BTC: 0.00000000", get_main_keyboard()
-    elif "order" in clean_key or "შეკვეთ" in clean_key:
+    elif "Orders" in text_lower or "შეკვეთ" in text_lower:
         return "📦 <b>Your Orders:</b>\n\nYou have no active orders at the moment.", get_main_keyboard()
 
     return "<b>Welcome to MoneyMind Bot! 🚀</b>\n\nChoose an option from the menu below:", get_main_keyboard()
