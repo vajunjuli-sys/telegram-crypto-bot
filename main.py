@@ -72,75 +72,85 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 
 def get_main_keyboard():
     keyboard = [
-        [KeyboardButton("Search Cheap Flights"), KeyboardButton("Buy Ticket with Crypto")],
-        [KeyboardButton("Crypto Mining"), KeyboardButton("Crypto Prices")],
-        [KeyboardButton("My Balance"), KeyboardButton("My Orders")]
+        [KeyboardButton("✈️ Search Cheap Flights"), KeyboardButton("💳 Buy Ticket with Crypto")],
+        [KeyboardButton("⛏️ Crypto Mining"), KeyboardButton("📊 Crypto Prices")],
+        [KeyboardButton("💰 My Balance"), KeyboardButton("📦 My Orders")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
 def get_inline_keyboard():
     keyboard = [
         [
-            InlineKeyboardButton("Search Flights", callback_data="flights"),
-            InlineKeyboardButton("Buy Ticket", callback_data="buy_ticket")
+            InlineKeyboardButton("✈️ Search Flights", callback_data="flights"),
+            InlineKeyboardButton("💳 Buy Ticket", callback_data="buy_ticket")
         ],
         [
-            InlineKeyboardButton("Mining Dashboard", callback_data="mining"),
-            InlineKeyboardButton("Live Prices", callback_data="prices")
+            InlineKeyboardButton("⛏️ Mining Dashboard", callback_data="mining"),
+            InlineKeyboardButton("📊 Live Prices", callback_data="prices")
         ],
         [
-            InlineKeyboardButton("Balance", callback_data="balance"),
-            InlineKeyboardButton("Orders", callback_data="orders")
+            InlineKeyboardButton("💰 Balance", callback_data="balance"),
+            InlineKeyboardButton("📦 Orders", callback_data="orders")
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 def get_crypto_prices():
-    return "Live Crypto Prices:\n\nBitcoin (BTC): $67,450.00\nEthereum (ETH): $2,540.00\nSolana (SOL): $172.50"
+    return (
+        "📊 <b>Live Crypto Prices (USD):</b>\n\n"
+        "🟡 <b>Bitcoin (BTC):</b> $67,450.00\n"
+        "🔷 <b>Ethereum (ETH):</b> $2,540.00\n"
+        "🟠 <b>Binance Coin (BNB):</b> $590.00\n"
+        "🟣 <b>Solana (SOL):</b> $172.50\n"
+        "<i>🔄 Updated live from Market Data</i>"
+    )
 
 def get_response_text(key, user_id=None):
     clean_key = str(key).strip().lower()
     
     if "flight" in clean_key or "ფრენ" in clean_key:
-        return "Cheap Flights Search: Please send any destination or city.", get_main_keyboard()
-    elif "buy" in clean_key or clean_key == "buy_ticket":
-        kb = [[InlineKeyboardButton("Pay 0.0018 BTC", callback_data="pay_btc")], [InlineKeyboardButton("Cancel", callback_data="cancel_order")]]
-        return "Buy Tickets with Crypto: Select payment method.", InlineKeyboardMarkup(kb)
-    elif "mining" in clean_key:
-        return "Crypto Mining Dashboard: Status Online", get_main_keyboard()
-    elif "price" in clean_key or clean_key == "prices":
+        return "✈️ <b>Cheap Flights Search</b>\n\n🔍 Searching for the best flight deals worldwide...\n\nგთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი (მაგალითად: <i>თბილისი მილანი</i>):", get_main_keyboard()
+    elif "buy" in clean_key or "ყიდვა" in clean_key:
+        kb = [[InlineKeyboardButton("✅ Pay 0.0018 BTC", callback_data="pay_btc")], [InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")]]
+        return "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:", InlineKeyboardMarkup(kb)
+    elif "mining" in clean_key or "მაინინგ" in clean_key:
+        return "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active (Mining...)\n• Active Hashrate: <b>51.2 MH/s</b>\n• Mined Balance: <b>0.00001850 BTC</b>", get_main_keyboard()
+    elif "price" in clean_key or "ფას" in clean_key:
         return get_crypto_prices(), get_main_keyboard()
-    elif "balance" in clean_key:
-        return "Your Account Balance: $0.00", get_main_keyboard()
-    elif "order" in clean_key:
-        return "Your Orders: No active orders.", get_main_keyboard()
+    elif "balance" in clean_key or "ბალანს" in clean_key:
+        return "💰 <b>Your Account Balance:</b>\n\n💵 USD: $0.00\n🟡 BTC: 0.00000000", get_main_keyboard()
+    elif "order" in clean_key or "შეკვეთ" in clean_key:
+        return "📦 <b>Your Orders:</b>\n\nYou have no active orders at the moment.", get_main_keyboard()
 
-    return "Welcome to MoneyMind Bot! Choose an option below:", get_main_keyboard()
+    return "<b>Welcome to MoneyMind Bot! 🚀</b>\n\nChoose an option from the menu below:", get_main_keyboard()
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
-    await update.message.reply_text("Welcome to MoneyMind Bot! 🚀", reply_markup=get_main_keyboard())
-    await update.message.reply_text("Interactive Control Panel:", reply_markup=get_inline_keyboard())
+    await update.message.reply_text("<b>Welcome to MoneyMind Bot! 🚀</b>", reply_markup=get_main_keyboard(), parse_mode='HTML')
+    await update.message.reply_text("💡 <b>Interactive Control Panel:</b>", reply_markup=get_inline_keyboard(), parse_mode='HTML')
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
     count = len(load_users())
-    await update.message.reply_text(f"Total Users: {count}\nYour ID: {user_id}")
+    await update.message.reply_text(f"📊 Total Users: <b>{count}</b>\n🆔 Your ID: <code>{user_id}</code>", parse_mode='HTML')
 
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     res_text, markup = get_response_text(query.data, update.effective_user.id)
-    await query.message.reply_text(res_text, reply_markup=markup)
+    try:
+        await query.message.edit_text(res_text, reply_markup=markup, parse_mode='HTML')
+    except Exception:
+        await query.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
     text = update.message.text
     res_text, markup = get_response_text(text, user_id)
-    await update.message.reply_text(res_text, reply_markup=markup)
+    await update.message.reply_text(res_text, reply_markup=markup, parse_mode='HTML')
 
 def main():
     try:
