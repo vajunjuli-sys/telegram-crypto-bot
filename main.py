@@ -1,5 +1,6 @@
 import os
 import logging
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
@@ -9,9 +10,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ტოკენი და რენდერის ლინკი
+# ტოკენი
 TELEGRAM_BOT_TOKEN = "8916561192:AAGJinMFZH7-l_OIHGE_q1NltVpPHfIfsi4"
-RENDER_URL = "https://telegram-crypto-bot-s5lk.onrender.com"
 USERS_FILE = "users.txt"
 
 def load_users():
@@ -36,6 +36,16 @@ def save_user(user_id):
                     f.write(f"{uid}\n")
         except Exception:
             pass
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain; charset=utf-8')
+        self.end_headers()
+        self.wfile.write(b"OK")
+    
+    def log_message(self, format, *args):
+        return
 
 def get_main_keyboard():
     keyboard = [
@@ -63,7 +73,7 @@ def get_inline_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info("Received /start command via Webhook!")
+    logger.info("Received /start command!")
     user_id = update.effective_user.id
     save_user(user_id)
     await update.message.reply_text("<b>Welcome to MoneyMind Bot! 🚀</b>", reply_markup=get_main_keyboard(), parse_mode='HTML')
@@ -81,13 +91,13 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     data = query.data
     
     if data == "flights":
-        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: თბილისი - დუბაი):"
+        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი:"
     elif data == "buy_ticket":
         text = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT (TRC20)\n- TON\n- BTC"
     elif data == "mining":
         text = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>\n• Unpaid Balance: <b>0.0042 BTC</b>"
     elif data == "prices":
-        text = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450 (+2.4%)\n• Ethereum (ETH): $2,540 (+1.1%)\n• Toncoin (TON): $5.20"
+        text = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450\n• Ethereum (ETH): $2,540\n• Toncoin (TON): $5.20"
     elif data == "balance":
         text = "💰 <b>Your Balance:</b>\n\n• USD: $0.00\n• Crypto: 0.000000 BTC"
     elif data == "orders":
@@ -127,7 +137,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     
+    import threading
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    logger.info(f"Health check HTTP server started on port {port}")
+
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start_command))
@@ -135,15 +151,8 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info(f"Starting webhook on port {port}...")
-    
-    # ვებჰუქის გაშვება რენდერის პორტითა და ლინკით
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        secret_token="moneymind_secret_2026",
-        webhook_url=f"{RENDER_URL}/{TELEGRAM_BOT_TOKEN}"
-    )
+    logger.info("Starting bot polling with drop_pending_updates=True...")
+    application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
