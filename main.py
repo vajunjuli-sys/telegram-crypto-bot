@@ -1,8 +1,8 @@
 import os
 import logging
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ლოგირების გამართვა
 logging.basicConfig(
@@ -47,63 +47,48 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
-def get_inline_keyboard():
+def get_main_keyboard():
     keyboard = [
-        [
-            InlineKeyboardButton("✈️ Search Flights", callback_data="flights"),
-            InlineKeyboardButton("💳 Buy Ticket", callback_data="buy_ticket")
-        ],
-        [
-            InlineKeyboardButton("⛏️ Mining Dashboard", callback_data="mining"),
-            InlineKeyboardButton("📊 Live Prices", callback_data="prices")
-        ],
-        [
-            InlineKeyboardButton("💰 Balance", callback_data="balance"),
-            InlineKeyboardButton("📦 Orders", callback_data="orders")
-        ]
+        [KeyboardButton("✈️ Search Cheap Flights"), KeyboardButton("💳 Buy Ticket with Crypto")],
+        [KeyboardButton("⛏️ Crypto Mining"), KeyboardButton("📊 Crypto Prices")],
+        [KeyboardButton("💰 My Balance"), KeyboardButton("📦 My Orders")]
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("Received /start command!")
     user_id = update.effective_user.id
     save_user(user_id)
     await update.message.reply_text(
-        "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n💡 <b>აირჩიე სასურველი სექცია ქვემოთ მოცემული მენიუდან:</b>",
-        reply_markup=get_inline_keyboard(),
+        "<b>Welcome to MoneyMind Bot! 🚀</b>\n\n💡 აირჩიე მენიუდან სასურველი პუნქტი:",
+        reply_markup=get_main_keyboard(),
         parse_mode='HTML'
     )
 
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     save_user(user_id)
-    count = len(load_users())
-    await update.message.reply_text(f"📊 Total Users: <b>{count}</b>\n🆔 Your ID: <code>{user_id}</code>", parse_mode='HTML')
-
-async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = query.data
+    text = update.message.text
+    logger.info(f"Received message from {user_id}: {text}")
     
-    if data == "flights":
-        text = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: თბილისი - დუბაი):"
-    elif data == "buy_ticket":
-        text = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT (TRC20)\n- TON\n- BTC"
-    elif data == "mining":
-        text = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>\n• Unpaid Balance: <b>0.0042 BTC</b>"
-    elif data == "prices":
-        text = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450 (+2.4%)\n• Ethereum (ETH): $2,540 (+1.1%)\n• Toncoin (TON): $5.20"
-    elif data == "balance":
-        text = "💰 <b>Your Balance:</b>\n\n• USD: $0.00\n• Crypto: 0.000000 BTC"
-    elif data == "orders":
-        text = "📦 <b>Your Orders:</b>\n\nშენ ჯერ არ გაქვს აქტიური შეკვეთები."
+    clean = text.lower()
+    
+    if "flight" in clean or "ფრენ" in clean or "search" in clean:
+        reply = "✈️ <b>Cheap Flights Search</b>\n\n🔍 გთხოვ მომწერო სასურველი მიმართულება ან ქალაქი (მაგ: თბილისი - დუბაი):"
+    elif "buy" in clean or "ticket" in clean or "ყიდვა" in clean or "ბილეთ" in clean:
+        reply = "💳 <b>Buy Tickets with Crypto</b>\n\n• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n- USDT (TRC20)\n- TON\n- BTC"
+    elif "mining" in clean or "მაინინგ" in clean:
+        reply = "⛏️ <b>Crypto Mining Dashboard</b>\n\n• Status: 🟢 Active\n• Hashrate: <b>51.2 MH/s</b>\n• Unpaid Balance: <b>0.0042 BTC</b>"
+    elif "price" in clean or "ფას" in clean or "კურს" in clean:
+        reply = "📊 <b>Live Crypto Prices:</b>\n\n• Bitcoin (BTC): $67,450 (+2.4%)\n• Ethereum (ETH): $2,540 (+1.1%)\n• Toncoin (TON): $5.20"
+    elif "balance" in clean or "ბალანს" in clean:
+        reply = "💰 <b>Your Balance:</b>\n\n• USD: $0.00\n• Crypto: 0.000000 BTC"
+    elif "order" in clean or "შეკვეთ" in clean:
+        reply = "📦 <b>Your Orders:</b>\n\nშენ ჯერ არ გაქვს აქტიური შეკვეთები."
     else:
-        text = f"რეჟიმი: {data}"
-        
-    try:
-        await query.message.edit_text(text, reply_markup=get_inline_keyboard(), parse_mode='HTML')
-    except Exception:
-        await query.message.reply_text(text, reply_markup=get_inline_keyboard(), parse_mode='HTML')
+        reply = f"✈️ <b>ძიების შედეგი მიმართულებით:</b> <code>{text}</code>\n\n✅ <b>ნაპოვნია ვარიანტები:</b>\n• Direct Flight → $145"
+
+    await update.message.reply_text(reply, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
 def main():
     port = int(os.environ.get('PORT', 10000))
@@ -117,8 +102,7 @@ def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("stats", stats_command))
-    application.add_handler(CallbackQueryHandler(handle_callback_query))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Starting bot polling...")
     application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
