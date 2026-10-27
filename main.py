@@ -146,20 +146,9 @@ def get_response_text(key, user_id=None):
     clean_key = str(key).strip().lower()
     
     if "flight" in clean_key or "ფრენ" in clean_key or "ბილეთ" in clean_key:
-        return (
+        msg_text = (
             "✈️ <b>Cheap Flights Search</b>\n\n"
             "🔍 Searching for the best flight deals worldwide...\n\n"
-            "<b>გთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი</b> (მაგალითად: <i>თბილისი მილანი</i> ან <i>ბათუმი დუბაი</i>):",
-            get_main_keyboard()
+            "<b>გთხოვ მომწერო ნებისმიერი მიმართულება ან ქალაქი</b> (მაგალითად: <i>თბილისი მილანი</i> ან <i>ბათუმი დუბაი</i>):"
         )
-    elif "buy" in clean_key or "ყიდვა" in clean_key or clean_key == "buy_ticket":
-        kb = [
-            [InlineKeyboardButton("✅ Confirm & Pay 0.0018 BTC", callback_data="pay_btc")],
-            [InlineKeyboardButton("✅ Pay with USDT (TRC20)", callback_data="pay_usdt")],
-            [InlineKeyboardButton("❌ Cancel", callback_data="cancel_order")]
-        ]
-        return (
-            "💳 <b>Buy Tickets with Crypto</b>\n\n"
-            "• აირჩიე გადახდის მეთოდი ბილეთის შესასყიდად:\n"
-            "• მიმართულება: <b>Selected Flight Deal</b>
         
