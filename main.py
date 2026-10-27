@@ -1,7 +1,6 @@
 import os
 import logging
 import requests
-import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -75,7 +74,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
-def start_health_server():
+def run_health_server():
     port = int(os.environ.get('PORT', 10000))
     try:
         server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
@@ -140,13 +139,4 @@ def get_crypto_prices():
         "🟡 <b>Bitcoin (BTC):</b> $67,450.00\n"
         "🔷 <b>Ethereum (ETH):</b> $2,540.00\n"
         "🟠 <b>Binance Coin (BNB):</b> $590.00\n"
-        "🟣 <b>Solana (SOL):</b> $172.50\n"
-        "<i>🔄 Updated live from Market Data</i>"
-    )
-
-# პასუხების გენერატორი
-def get_response_text(key, user_id=None):
-    clean_key = str(key).strip().lower()
-    
-    if "flight" in clean_key or "ფრენ" in clean_key or "ბილეთ" in clean_key:
-        msg_text
+        "🟣 <b>Solana (SOL):</b> $172.5
